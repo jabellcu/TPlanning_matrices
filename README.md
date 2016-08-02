@@ -8,3 +8,6 @@ Matrix manipulation toolkit for transport planners written in python.
  - Matrix segmentation (by time periods, demand segments, etc)
 
 Assumes matrices are pandas dataframes, with "Origin" and "Destination" as multiindex, and one column per matrix. Matrices could be trips or cost.
+
+# **WORK IN PROGRESS**
+Just a collection notebooks with tools for now
