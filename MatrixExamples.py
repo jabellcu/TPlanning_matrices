@@ -12,7 +12,7 @@ df = pd.DataFrame(data=[range(6) for row in range(3)], columns=['A1', 'A2', 'A3'
 df
 
 
-# In[67]:
+# In[3]:
 
 def mat(n):
     mat = pd.DataFrame({'O': [x+1 for x in range(n) for _ in range(n)],
@@ -26,7 +26,7 @@ def mat(n):
     return mat
 
 
-# In[68]:
+# In[4]:
 
 m = mat(7)
 m
@@ -47,4 +47,20 @@ def I(n):
 
 I3 = I(3)
 I3
+
+
+# In[7]:
+
+ex_matrix = pd.read_csv('ex_matrix_1.csv', index_col=[0,1])
+ex_skimdist = pd.read_csv('ex_skimdist_1.csv', index_col=[0,1])
+
+
+# In[11]:
+
+ex_matrix
+
+
+# In[10]:
+
+ex_skimdist
 
