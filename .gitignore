@@ -89,3 +89,6 @@ ENV/
 .ropeproject
 *.un~
 *.md~
+*.sqlite
+%HOMEDRIVE%%HOMEPATH%/.ipython/profile_default/startup/README
+%HOMEDRIVE%%HOMEPATH%/.jupyter/migrated
