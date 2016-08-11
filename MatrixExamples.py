@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[3]:
 
 import pandas as pd
 
@@ -30,6 +30,14 @@ def mat(n):
 
 m = mat(7)
 m
+
+
+# In[6]:
+
+exmat = pd.DataFrame({'O': [10,10,20,20],
+                      'D': [10,20,10,20],
+                      'T':[3,2,4,1]}).set_index(['O','D'])
+exmat
 
 
 # In[5]:
