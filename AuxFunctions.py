@@ -130,3 +130,14 @@ def randomizeSeries(S, fraction):
 
 def randomizeTE(TE):
     return TE.apply(randomizeSeries, args=[10])
+
+def zip_df_cols(dflist):
+    '''generator yields dataframes formed of pair-wise concatenation
+    of columns from each df in the input dataframe list.'''
+    max_cols = max([len(df.columns) for df in dflist])
+    for i in range(max_cols):
+        try:
+            yield pd.concat([df.iloc[:,i] for df in dflist], axis=1)
+        except IndexError:
+            raise IndexError('Input dataframes have different number of columns.')
+

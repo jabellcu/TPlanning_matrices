@@ -154,13 +154,13 @@ class Matrix(pd.DataFrame):
         return mat
     
         #TODO: update this function to allow outputing a weighted average (eg: for costs)
-        # Deal with 0 trips in wght file:
-            ## 1) Multiply src_file by wght_file
-            ## 2) Disaggregate src x wght as if it was a demand matrix
-            ## 3) Disaggregate wght as a demmand matrix as well
-            ## 4) merge src_wght_hyl and wght_hyl on the first two columns:
-            ## 5) Divide src x wght / wght at hyl level
-            ## Aggregate!
+        # Deal with 0 trips in wght file, and:
+        ## 1) Multiply src_file by wght_file
+        ## 2) Disaggregate src x wght as if it was a demand matrix
+        ## 3) Disaggregate wght as a demmand matrix as well
+        ## 4) merge src_wght_hyl and wght_hyl on the first two columns:
+        ## 5) Divide src x wght / wght at hyl level
+        ## Aggregate!
         
     def complete(self, zones):
         '''Rompletes the matrix index with specified zones. Ignores existing zones.'''
@@ -261,16 +261,6 @@ class Matrix(pd.DataFrame):
 
         return matrix
         
-    #TODO:
-    def join_orig(df):
-        '''Joins df on the matrix origins.'''
-        ...
-        
-    #TODO:
-    def join_dest(df):
-        '''Joins df on the matrix destinations.'''
-        ...
-    
     def furness(self, TO, TD, tolerance=0.001, max_iter=100):
         '''Use FRATAR algorithm to adjust (balance) the matrix
         to target origins and destinations (TO, TD), within a certain tolerance.

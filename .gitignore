@@ -93,3 +93,5 @@ ENV/
 %HOMEDRIVE%%HOMEPATH%/.ipython/profile_default/startup/README
 %HOMEDRIVE%%HOMEPATH%/.jupyter/migrated
 %HOMEDRIVE%%HOMEPATH%/.config/git/gitk
+
+*.swp
