@@ -1,11 +1,12 @@
 
+# coding: utf-8
+
 import numpy as np
 import pandas as pd
 import re
 import os
 
-from MatrixExamples import m
-from AuxFunctions import duplicates_in_list
+from AuxFunctions import duplicates_in_list, CheckEMMEmatName, CheckEMMEmatNumber
 
 def zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     '''returns a MultiIndex object with zones for origins and destinations.'''
@@ -30,7 +31,6 @@ def zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
                          '\n"zones" must be a list or a list of lists')
     
     return idx
-
 
 class Matrix(pd.DataFrame):
     '''A Matrix in Transport Planning is a pandas DataFrame,
@@ -181,6 +181,24 @@ class Matrix(pd.DataFrame):
         return self.reindex(zoning_intersect)
     
     @staticmethod
+    def read_TBA3(file, mat_type='VALUE'):
+        '''Reads a text file containing one or more matrices in TBA3 format.
+        This is one of SATURN-friendly formats'''
+        
+        df = pd.read_csv(file, sep=' {1,}',
+                              names='O D UC {}'.format(mat_type).split(),
+                              index_col=[0,1,2],
+                              header=None, engine='python')
+        
+        df = df.unstack()
+        if mat_type == 'VALUE':
+            #keep only UC lvl if no mat_type specified
+            df.columns = df.columns.droplevel()
+        mat = Matrix(df)
+        
+        return mat
+        
+    @staticmethod
     def read_EMME(file):
         '''Reads a text file containing one or more matrices in EMME format.
         Accepts matrices, trip origins, trip destinations and constants.
@@ -278,13 +296,44 @@ class Matrix(pd.DataFrame):
                 break
         
         return fmat
+    
+    def to_EMME(self, OutputName,
+                file_header='', mat_number_start=100, mat_comment='', 
+                default_val=0, decimals=4):
+        '''Will write each of the columns of a dataframe (matrix)
+        as stacked EMME matrices in a single file.
+        Missing values are ignored.
+        Matrix nnumbers will be sequential with column order,
+        starting with mat_number_start.'''
+        df_dict = self.to_dict()
+        with open(OutputName, "w") as OutputFile:
+            if file_header:
+                OutputFile.write(file_header)
+            
+            for col in df_dict:
+                mat = df_dict[col]
+                mat_name = '{}'.format(col)
+                CheckEMMEmatName(mat_name)
+                
+                mat_number = 'mf{0:02d}'.format(mat_number_start + col)
+                CheckEMMEmatNumber(mat_number)
+                
+                if self.columns.nlevels > 1:
+                    #for MultiIndex, use first column level for mat_type
+                    mat_type = self.columns.names[0]
+                    mat_cmnt = '{} {}: {}'.format(mat_comment, mat_type, col)
+                else:
+                    mat_cmnt = '{}: {}'.format(col, mat_comment)               
 
+                # Write matrix headers:
+                OutputFile.write("\nd matrix={}".format(mat_number))
+                OutputFile.write("\na matrix={} {} {} '{}'".format(
+                                    mat_number, mat_name, default_val, mat_cmnt))
 
-import random
-
-def randomizeSeries(S, fraction):
-    '''Adds variability to a pd.Series'''
-    return S+pd.Series([random.randint(-int(x/fraction),int(x/fraction)) for x in S], index=S.index)
-
-def randomizeTE(TE):
-    return TE.apply(randomizeSeries, args=[10])
+                # Write data:
+                for ODpair in mat:
+                    O, D = ODpair
+                    val = mat[ODpair]
+                    #Missing values won't be written
+                    if pd.notnull(val):
+                        OutputFile.write('\n {} {}: {:.{dec}f}'.format(O, D, val, dec=decimals))

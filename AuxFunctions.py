@@ -1,20 +1,14 @@
 
 # coding: utf-8
 
-# In[1]:
-
+import numpy as np
+import pandas as pd
 import re
-
-
-# In[ ]:
 
 def ListElementsInStr(s, lst):
     '''returns the elements of lst found in s'''
     regex = re.compile('({})'.format('|'.join(lst)))
     return regex.findall(s)
-
-
-# In[2]:
 
 def sort_by_list_key_func(lst):
     '''Returns a function to be used for sorting.
@@ -37,9 +31,6 @@ def sort_by_list_key_func(lst):
             return -1
     return sort_func
 
-
-# In[3]:
-
 def sort_df_by_lists(df, lists):
     '''Returns the input dataframe with columns sorted by the appearance of
     each element of each list in input lists in the column names,
@@ -58,9 +49,6 @@ def sort_df_by_lists(df, lists):
         cols.sort(key=sort_by_list_key_func(lst))
     return df[cols] #sorted! 
 
-
-# In[4]:
-
 def PairWiseColumnGroups(dflist):
     '''generator yields dataframes formed of pair-wise concatenation
     of columns from each df in the input dataframe list.'''
@@ -71,9 +59,6 @@ def PairWiseColumnGroups(dflist):
         except IndexError:
             raise IndexError('Input dataframes have different number of columns.')
 
-
-# In[ ]:
-
 def SetIntras(mat, value=0, inplace=True):
     '''Sets intra zonal values'''
     if inplace:
@@ -82,9 +67,6 @@ def SetIntras(mat, value=0, inplace=True):
         aux = mat.copy()
         aux.loc[mat.index.get_level_values(0) == mat.index.get_level_values(1), :] = value
 
-
-# In[ ]:
-
 def duplicates_in_list(lst):
     '''Returns True in there are duplicates in lst.'''
     if len(lst) != len(set(lst)):
@@ -92,3 +74,59 @@ def duplicates_in_list(lst):
     else:
         return False
 
+def CheckEMMEmatName(s):
+    '''Throws an exception id s is not a valid EMME name.'''
+    if len(s) < 1 or len(s) > 6:
+        ErrMsg = '{} is not a valid EMME name.'.format(s)
+        raise NameError(ErrMsg)
+
+def CheckEMMEmatNumber(s):
+    '''Trhows an exception id s is not a valid EMME number.'''
+    ErrMsg = '{} is not a valid EMME number.'.format(s)
+    try:
+        if (('mf' not in s[:2] 
+        and 'md' not in s[:2]
+        and 'mo' not in s[:2]
+        and 'ms' not in s[:2])
+        or len(s[2:]) < 2
+        or len(s[2:]) > 3 
+        or not StringIsInt(s[2:])):
+            raise NameError(ErrMsg)
+    except:
+        raise NameError(ErrMsg)
+
+def StringIsInt(s):
+    '''True if string represents an int, False otherwise'''
+    try: 
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+def mat(n):
+    mat = pd.DataFrame({'O': [x+1 for x in range(n) for _ in range(n)],
+                        'D': [x+1 for x in range(n)] * n,
+                        'T1':[int((x%3)!=0) for x in range(n*n)],
+                        'T2':[x+1 for x in range(n*n)],
+                        'T3':[-(x%n)**2+n*(x%n) for x in range(n*n)]})
+    mat = mat.set_index(['O', 'D'])
+    #remove intrazonals:
+    mat.loc[mat.index.get_level_values(0) == mat.index.get_level_values(1), 'T3'] = 0 
+    return mat
+
+def I(n):
+    '''returns identity matrix of n x n'''
+    matI = pd.DataFrame({'O': [x+1 for x in range(n) for _ in range(n)],
+                         'D': [x+1 for x in range(n)] * n})
+    matI['T'] = (matI.O == matI.D).apply(int)
+    matI = matI.set_index(['O', 'D'])
+    return matI
+
+import random
+
+def randomizeSeries(S, fraction):
+    '''Adds variability to a pd.Series'''
+    return S+pd.Series([random.randint(-int(x/fraction),int(x/fraction)) for x in S], index=S.index)
+
+def randomizeTE(TE):
+    return TE.apply(randomizeSeries, args=[10])
