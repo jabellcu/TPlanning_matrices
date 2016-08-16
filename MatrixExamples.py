@@ -44,13 +44,16 @@ I3 = I(3)
 I3
 
 
-# In[7]:
-
-ex_matrix = pd.read_csv('example_data\ex_matrix_1.csv', index_col=[0,1])
-ex_skimdist = pd.read_csv('example_data\ex_skimdist_1.csv', index_col=[0,1])
-
-
 # In[8]:
+
+import os
+ex_matrixp = os.path.join('example_data', 'ex_matrix_1.csv')
+ex_matrix = pd.read_csv(ex_matrixp, index_col=[0,1])
+ex_skimdistp = os.path.join('example_data', 'ex_skimdist_1.csv')
+ex_skimdist = pd.read_csv(ex_skimdistp, index_col=[0,1])
+
+
+# In[9]:
 
 mat = Matrix(m)
 mat
@@ -115,64 +118,39 @@ rezoned.TOTALS
 mat.TOTALS
 
 
-# In[38]:
+# In[19]:
 
-ex_matrix = Matrix(pd.DataFrame.from_csv('example_data\ex_matrix_1.csv', index_col=[0,1]))
-ex_matrix
-
-
-# In[37]:
-
-ex_skimdist = Matrix(pd.DataFrame.from_csv('example_data\ex_skimdist_1.csv', index_col=[0,1]))
-ex_skimdist
-
-
-# In[25]:
-
-DEMMAND = Matrix.read_EMME('example_data\Demand_EMME.txt')
+DEMMANDp = os.path.join('example_data', 'Demand_EMME.txt')
+DEMMAND = Matrix.read_EMME(DEMMANDp)
 DEMMAND
 
 
-# In[26]:
+# In[20]:
 
-DIST = Matrix.read_EMME('example_data\Dist_EMME.txt')
+DISTp = os.path.join('example_data', 'Dist_EMME.txt')
+DIST = Matrix.read_EMME(DISTp)
 DIST
 
 
-# In[27]:
+# In[21]:
 
 tTO = randomizeTE(mat.TO)
 tTO
 
 
-# In[28]:
+# In[22]:
 
 tTD = randomizeTE(mat.TD)
 tTD
 
 
-# In[29]:
+# In[23]:
 
 fmat = mat.furness(tTO, tTD)
 fmat
 
 
-# In[31]:
+# In[24]:
 
 max([max(x,y) for x,y in zip((fmat.TO - tTO).abs().max(), (fmat.TD - tTD).abs().max())])
-
-
-# In[40]:
-
-ex_TLD = TLD(ex_matrix, ex_skimdist, 'meters',1)
-
-
-# In[42]:
-
-ex_TLD.sum()
-
-
-# In[43]:
-
-ex_matrix.sum()
 

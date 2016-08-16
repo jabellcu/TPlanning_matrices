@@ -103,6 +103,24 @@ def StringIsInt(s):
     except ValueError:
         return False
 
+def trim_index_df(df: pd.DataFrame, index_names_to_keep: list, inplace=False):
+    '''Drops all indexes except for specified index names.'''
+    
+    indexes_to_drop = list(df.index.names)
+    try:
+        indexes_to_drop.remove(index_names_to_keep)
+    except ValueError:
+        try:
+            for idxn in index_names_to_keep:
+                indexes_to_drop.remove(idxn)
+        except ValueError:
+            pass
+    
+    if inplace:
+        df.reset_index(level=indexes_to_drop, drop=True, inplace=True)
+    else:
+        return df.reset_index(level=indexes_to_drop, drop=True)
+
 def mat(n):
     mat = pd.DataFrame({'O': [x+1 for x in range(n) for _ in range(n)],
                         'D': [x+1 for x in range(n)] * n,
