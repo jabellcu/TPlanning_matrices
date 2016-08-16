@@ -9,7 +9,10 @@ import os
 from AuxFunctions import duplicates_in_list, CheckEMMEmatName, CheckEMMEmatNumber
 
 def zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
-    '''returns a MultiIndex object with zones for origins and destinations.'''
+    '''Returns a MultiIndex object with zones for origins and destinations.
+    zones can be a list of zones: a square zoning system will be returned
+    zones can also be [origs, dests]: all combinations from origs to dests
+    are returned. origs and dests are list of zones.'''
     
     if all(isinstance(elem, list) for elem in zones):
         ODs = zones

@@ -46,8 +46,8 @@ I3
 
 # In[7]:
 
-ex_matrix = pd.read_csv('ex_matrix_1.csv', index_col=[0,1])
-ex_skimdist = pd.read_csv('ex_skimdist_1.csv', index_col=[0,1])
+ex_matrix = pd.read_csv('example_data\ex_matrix_1.csv', index_col=[0,1])
+ex_skimdist = pd.read_csv('example_data\ex_skimdist_1.csv', index_col=[0,1])
 
 
 # In[8]:
@@ -117,25 +117,25 @@ mat.TOTALS
 
 # In[38]:
 
-ex_matrix = Matrix(pd.DataFrame.from_csv('ex_matrix_1.csv', index_col=[0,1]))
+ex_matrix = Matrix(pd.DataFrame.from_csv('example_data\ex_matrix_1.csv', index_col=[0,1]))
 ex_matrix
 
 
 # In[37]:
 
-ex_skimdist = Matrix(pd.DataFrame.from_csv('ex_skimdist_1.csv', index_col=[0,1]))
+ex_skimdist = Matrix(pd.DataFrame.from_csv('example_data\ex_skimdist_1.csv', index_col=[0,1]))
 ex_skimdist
 
 
 # In[25]:
 
-DEMMAND = Matrix.read_EMME('Demand_EMME.txt')
+DEMMAND = Matrix.read_EMME('example_data\Demand_EMME.txt')
 DEMMAND
 
 
 # In[26]:
 
-DIST = Matrix.read_EMME('Dist_EMME.txt')
+DIST = Matrix.read_EMME('example_data\Dist_EMME.txt')
 DIST
 
 
