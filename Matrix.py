@@ -3,12 +3,17 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import re
 import os
+import scipy.stats as stats
+import pylab
 
-from AuxFunctions import duplicates_in_list, CheckEMMEmatName, CheckEMMEmatNumber
+from AuxFunctions import duplicates_in_list, CheckEMMEmatName, zip_df_cols
+from AuxFunctions import CheckEMMEmatNumber, ScatterPlot_ConsecutiveColPairs
+from AuxFunctions import RegressionStats_ConsecutiveColPairs
 
-def zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
+def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     '''Returns a MultiIndex object with zones for origins and destinations.
     zones can be a list of zones: a square zoning system will be returned
     zones can also be [origs, dests]: all combinations from origs to dests
@@ -30,7 +35,7 @@ def zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     idx = pd.MultiIndex.from_product(ODs, names=names)
     
     if idx.names != names:
-        raise ValueError('zoning could not be created from {}.'.format(zones) + 
+        raise ValueError('Zoning could not be created from {}.'.format(zones) + 
                          '\n"zones" must be a list or a list of lists')
     
     return idx
@@ -63,6 +68,23 @@ class Matrix(pd.DataFrame):
     def TD(self):
         '''Returns trip-ends for destinations.'''
         return self.groupby(level=1).sum()
+
+    @property
+    def TE(self):
+        '''Returns trip-ends for both origins and destinations.'''
+        # this is just a wrapper of TEs function.
+        # This allows accesing it as a property,
+        # which is consistent with TO and TD usage.
+        return self.TEs()
+
+    def TEs(self, index_name='zone', suffixes=['_TO', '_TD']):
+        '''Returns Trip Ends: both trip origins and trip destinations
+        in a single DataFrame. Allows customization of index name and suffixes,
+        as this can be useful in some cases.'''
+        TE = pd.merge(self.TO, self.TD, suffixes=suffixes,
+                     left_index=True, right_index=True)
+        TE.index.names = [index_name]
+        return TE
     
     @property
     def TOTALS(self):
@@ -86,6 +108,10 @@ class Matrix(pd.DataFrame):
     def TDp(self):
         '''Returns destination proportions: Pij = Tij / TDj'''
         return self.groupby(level=1).apply(lambda x: (x/x.sum()).fillna(0))
+    
+    @property
+    def proportions(self):
+        return self.apply(lambda x: x/sum(x), axis=1).fillna(0)
     
     @property
     def matrix(self):
@@ -166,13 +192,13 @@ class Matrix(pd.DataFrame):
         ## Aggregate!
         
     def complete(self, zones):
-        '''Rompletes the matrix index with specified zones. Ignores existing zones.'''
+        '''Completes the matrix index with specified zones. Ignores existing zones.'''
         if isinstance(zones, pd.MultiIndex):
             #zones is a zoning system already (MultiIndex)
             zoning = zones
         elif isinstance(zones, list):
             #zones is just a list that needs to be expanded
-            zoning = zoning(zones)
+            zoning = Zoning(zones)
         else:
             raise ValueError('"zones" must be list of zones or zoning system (MultiIndex)')
         zoning_union = self.index.union(zoning)
@@ -228,7 +254,8 @@ class Matrix(pd.DataFrame):
 
         ## Read Data
         data = {}
-        fn, fext = os.path.splitext(file)
+        filen = os.path.basename(file)
+        fn, fext = os.path.splitext(filen)
         data[fn] = {}
         with open(file, 'r') as f:
             fcontent = f.read()
@@ -330,3 +357,29 @@ class Matrix(pd.DataFrame):
                     #Missing values won't be written
                     if pd.notnull(val):
                         OutputFile.write('\n {} {}: {:.{dec}f}'.format(O, D, val, dec=decimals))
+
+def TE_comparison_to_JPGs(mati, matf, oFileNamePattern='{}', title='',
+                xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=0,
+                prefixes='', suffixes=''):
+    '''Produces scatterplots of trip ends in mati and matf.
+    mati and matf columns will be compared pairwise, so must be ordered.
+    Wrapper of ScatterPlot_ConsecutiveColPairs (with flavor).
+        prefixes         - to prepend to each column. Use as a marker.
+        suffixes         - to append to each column. Use as a marker.
+    '''
+    for df in zip_df_cols([mati.TE, matf.TE]):
+        ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern=oFileNamePattern,
+                title=title, xaxis_eq_yaxis=xaxis_eq_yaxis,
+                homogeneous_axis=homogeneous_axis, min_axis=min_axis,
+                prefixes=prefixes, suffixes=suffixes)
+
+def TE_RegressionStats(mati, matf, prefixes='', suffixes=''):
+    '''Returns a dataframe with the regression statistics of mati and matf trip
+    ends. mati and matf columns will be compared pairwise, so must be ordered.
+    Wrapper of RegressionStats_ConsecutiveColPairs (with flavor).
+        prefixes         - to prepend to each column. Use as a marker.
+        suffixes         - to append to each column. Use as a marker.
+    '''
+    return pd.concat([RegressionStats_ConsecutiveColPairs(
+                        df, prefixes=prefixes, suffixes=suffixes)
+                     for df in zip_df_cols([mati.TE, matf.TE])])

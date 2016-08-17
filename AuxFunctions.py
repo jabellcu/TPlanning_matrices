@@ -3,7 +3,10 @@
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import re
+import scipy.stats as stats
+import pylab
 
 def ListElementsInStr(s, lst):
     '''returns the elements of lst found in s'''
@@ -142,10 +145,135 @@ def randomizeTE(TE):
 def zip_df_cols(dflist):
     '''generator yields dataframes formed of pair-wise concatenation
     of columns from each df in the input dataframe list.'''
-    max_cols = max([len(df.columns) for df in dflist])
-    for i in range(max_cols):
+    max_coln = max([len(df.columns) for df in dflist])
+    for i in range(max_coln):
         try:
             yield pd.concat([df.iloc[:,i] for df in dflist], axis=1)
         except IndexError:
             raise IndexError('Input dataframes have different number of columns.')
 
+def df_difference(dfi, dff, percent=False):
+    '''Returns dff-dfi difference. Asumes compatible indexes.
+    Columns substracted positionally, because if names are overlapping
+    then it is just better to do "dff-dfi").
+    percentage=True will return (dff-dfi)/dfi instead.'''
+    
+    diff = pd.DataFrame()
+    max_coln = max(len(dfi.columns), len(dff.columns))
+    
+    for i in range(max_coln):
+        try:
+            coli = dfi.columns[i]
+            colf = dff.columns[i]
+            col = '{}-{}'.format(colf, coli)
+            
+            if percent:
+                diff[col] = (dff[colf] / dfi[coli]) -1
+            else:
+                diff[col] = dff[colf] - dfi[coli]
+                
+        except:
+            raise IndexError('Input dataframes have different number of columns.')
+    return diff
+
+def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
+                xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=0,
+                prefixes='', suffixes=''):
+    
+    '''Produces scatterplot graphs of consecutive df columns.
+        xaxis_eq_yaxis   - both x and y axis' maximum values are the same
+        homogeneous_axis - all scatterplots for input df have the same axis
+        min_axis         - minimum axis values
+        prefixes         - to prepend to each column. Use as a marker.
+        suffixes         - to append to each column. Use as a marker.
+    '''
+    
+    if prefixes:
+        try:
+            df.columns = [prefix+col for col,prefix in zip(df.columns,prefixes)]
+        except:
+            raise ValueError("prefixes must have the same length as df.columns.")
+    
+    if suffixes:
+        try:
+            df.columns = [col+sufix for col,sufix in zip(df.columns,suffixes)]
+        except:
+            raise ValueError("suffixes must have the same length as df.columns.")
+    
+    if duplicates_in_list(df.columns):
+        raise ValueError("Duplicate names in DataFrame's columns.")
+        
+    cols = df.columns
+    minv = df.min().min()
+    maxv = df.max().max()
+    
+    for colin, colfn in zip(cols, cols[1:]):
+        ColPairName = ' - '.join([colin, colfn])
+        
+        if not homogeneous_axis:
+            minv = min(df[colin].min(), df[colfn].min())
+            maxv = max(df[colin].max(), df[colfn].max())
+        
+        if min_axis:
+            minv = min_axis
+        
+        #regression
+        slope, intercept, r_val, p_val, slope_std_err = stats.linregress(df[colin], df[colfn])
+        regression_formula = '$y={:.3f}*x{:+.3f}$\n$R^2: {:.3f}$'.format(
+                                slope, intercept, r_val)
+
+        #format plot
+        if title:
+            df.plot(kind= 'scatter', x=colin, y=colfn, title=title, legend =True)
+        else:
+            df.plot(kind= 'scatter', x=colin, y=colfn, legend =True)
+
+        #plot regression line
+        plt.plot(df[colin], slope * df[colin] + intercept)
+
+        pylab.annotate(regression_formula, xycoords='axes fraction',
+                       xy=(.55,.05), fontsize=20,
+                       bbox=dict(facecolor='white', edgecolor='black',
+                                 boxstyle='round,pad=0.3'))
+
+        if xaxis_eq_yaxis:
+            axes = plt.gca()
+            axes.set_xlim([minv,maxv])
+            axes.set_ylim([minv,maxv])
+
+        #export plot
+        oFileName = oFileNamePattern.format(ColPairName)
+        plt.savefig(oFileName)
+        plt.close()
+
+def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes=''):
+    '''Returns a dataframe with the regression stats of consecutive df columns.
+        prefixes         - to prepend to each column. Use as a marker.
+        suffixes         - to append to each column. Use as a marker.
+    '''
+    
+    if prefixes:
+        try:
+            df.columns = [prefix+col for col,prefix in zip(df.columns,prefixes)]
+        except:
+            raise ValueError("prefixes must have the same length as df.columns.")
+    
+    if suffixes:
+        try:
+            df.columns = [col+sufix for col,sufix in zip(df.columns,suffixes)]
+        except:
+            raise ValueError("suffixes must have the same length as df.columns.")
+    
+    if duplicates_in_list(df.columns):
+        raise ValueError("Duplicate names in DataFrame's columns.")
+    
+    regression_df = pd.DataFrame(columns=['slope', 'intercept', 'R2'])
+    cols = df.columns
+    
+    for colin, colfn in zip(cols, cols[1:]):
+        ColPairName = ' - '.join([colin, colfn])
+        
+        slope, intercept, r_val, p_val, slope_std_err = stats.linregress(df[colin], df[colfn])
+        regression_df.loc[ColPairName] = [slope, intercept, r_val]
+    
+    return regression_df
