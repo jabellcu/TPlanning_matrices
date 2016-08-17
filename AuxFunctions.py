@@ -49,16 +49,6 @@ def sort_df_by_lists(df, lists):
         cols.sort(key=sort_by_list_key_func(lst))
     return df[cols] #sorted! 
 
-def PairWiseColumnGroups(dflist):
-    '''generator yields dataframes formed of pair-wise concatenation
-    of columns from each df in the input dataframe list.'''
-    max_cols = max([len(df.columns) for df in dflist])
-    for i in range(max_cols):
-        try:
-            yield pd.concat([df.iloc[:,i] for df in dflist], axis=1)
-        except IndexError:
-            raise IndexError('Input dataframes have different number of columns.')
-
 def SetIntras(mat, value=0, inplace=True):
     '''Sets intra zonal values'''
     if inplace:
