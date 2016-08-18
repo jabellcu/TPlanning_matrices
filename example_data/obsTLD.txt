@@ -1,4 +1,4 @@
-Aggregate Purpose, Direction, CountOfSurveyYear, SumOfW5, StageDistance
+Purpose, Direction, CountOfSurveyYear, Trips, StageDistance
 Business, FH, 1.00000, 1.07094, 135.00000
 Business, FH, 1.00000, 1.17447, 350.00000
 Business, FH, 1.00000, 1.25521, 1.50000

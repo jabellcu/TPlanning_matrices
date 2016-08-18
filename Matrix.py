@@ -48,22 +48,22 @@ class Matrix(pd.DataFrame):
     def _constructor(self):
         '''Matrix operations returns Matrix objects.'''
         return Matrix
-    
+
     @property
     def Os(self):
         '''Returns origin names without duplicates.'''
         return list(self.index.get_level_values(0).unique())
-    
+
     @property
     def Ds(self):
         '''Returns destination names without duplicates.'''
         return list(self.index.get_level_values(1).unique())
-    
+
     @property
     def TO(self):
         '''Returns trip-ends for origins.'''
         return self.groupby(level=0).sum()
-    
+
     @property
     def TD(self):
         '''Returns trip-ends for destinations.'''
@@ -85,12 +85,12 @@ class Matrix(pd.DataFrame):
                      left_index=True, right_index=True)
         TE.index.names = [index_name]
         return TE
-    
+
     @property
     def TOTALS(self):
         '''Returns the matrix totals.'''
         return self.sum()
-    
+
     def TransposeOD(self, sort=True):
         '''Transposes a matrix in ODT format: swaps Origins and Destinations.'''
         mat_T = self.swaplevel()
@@ -98,31 +98,49 @@ class Matrix(pd.DataFrame):
         if sort:
             mat_T = mat_T.sort_index()
         return mat_T
-    
+
     @property
     def TOp(self):
         '''Returns origin proportions: Pij = Tij / TOi'''
         return self.groupby(level=0).apply(lambda x: (x/x.sum()).fillna(0))
-    
+
     @property
     def TDp(self):
         '''Returns destination proportions: Pij = Tij / TDj'''
         return self.groupby(level=1).apply(lambda x: (x/x.sum()).fillna(0))
-    
+
     @property
     def proportions(self):
         return self.apply(lambda x: x/sum(x), axis=1).fillna(0)
-    
+
     @property
     def matrix(self):
         '''Returns matrix as a tradicional 2D matrix.'''
         return self.to_panel()
-    
+
     #TODO:
     @staticmethod
     def from_panel(panel):
         ...
-    
+
+    def complete(self, zones):
+        '''Completes the matrix index with specified zones. Ignores existing zones.'''
+        if isinstance(zones, pd.MultiIndex):
+            #zones is a zoning system already (MultiIndex)
+            zoning = zones
+        elif isinstance(zones, list):
+            #zones is just a list that needs to be expanded
+            zoning = Zoning(zones)
+        else:
+            raise ValueError('"zones" must be list of zones or zoning system (MultiIndex)')
+        zoning_union = self.index.union(zoning)
+        return self.reindex(index=zoning_union)
+
+    def submatrix(self, zoning: pd.MultiIndex):
+        '''Returns a submatrix with the origins and destinations specified in zoning'''
+        zoning_intersect = self.index.intersection(zoning)
+        return self.reindex(zoning_intersect)
+
     def rezone(self, mapping: pd.DataFrame, mapping_cols=['old', 'new'],
                weight_cols=None, calculate_proportions=True,
                min_weight=0.00000001):
@@ -181,7 +199,7 @@ class Matrix(pd.DataFrame):
             print("WARNING: rezoned matrix does not preserve the matrix totals.")
         
         return mat
-    
+
         #TODO: update this function to allow outputing a weighted average (eg: for costs)
         # Deal with 0 trips in wght file, and:
         ## 1) Multiply src_file by wght_file
@@ -190,25 +208,40 @@ class Matrix(pd.DataFrame):
         ## 4) merge src_wght_hyl and wght_hyl on the first two columns:
         ## 5) Divide src x wght / wght at hyl level
         ## Aggregate!
+
+    #TODO
+    def fill_intrazonals(self, dist, func):
+        '''Infill diagonal of the matrix with values from func, and
+        dist'''
+        ...
+
+    #TODO: implement max_iter by time rather than iterations
+    def furness(self, TO, TD, tolerance=0.001, max_iter=100):
+        '''Use FRATAR algorithm to adjust (balance) the matrix
+        to target origins and destinations (TO, TD), within a certain tolerance.
+        Will not always converge, hence cap maximum iterations to max_iter.'''
         
-    def complete(self, zones):
-        '''Completes the matrix index with specified zones. Ignores existing zones.'''
-        if isinstance(zones, pd.MultiIndex):
-            #zones is a zoning system already (MultiIndex)
-            zoning = zones
-        elif isinstance(zones, list):
-            #zones is just a list that needs to be expanded
-            zoning = Zoning(zones)
-        else:
-            raise ValueError('"zones" must be list of zones or zoning system (MultiIndex)')
-        zoning_union = self.index.union(zoning)
-        return self.reindex(index=zoning_union)
-    
-    def submatrix(self, zoning: pd.MultiIndex):
-        '''Returns a submatrix with the origins and destinations specified in zoning'''
-        zoning_intersect = self.index.intersection(zoning)
-        return self.reindex(zoning_intersect)
-    
+        sTO = self.TO
+        sTD = self.TD
+        fmat = self.copy()
+        i = 1
+        
+        while True:
+            # Balancing factors (Nan ~> 0, inf ~> 1):
+            A = (TO / fmat.TO).fillna(0).replace([np.inf, -np.inf], 1)
+            B = (TD / fmat.TD).fillna(0).replace([np.inf, -np.inf], 1)
+            fmat = fmat.mul(A, axis=1, level=0).mul(B, axis=1, level=1)
+        
+            i += 1
+            within_tol = not (any((fmat.TO - TO) > tolerance) or any((fmat.TD - TD) > tolerance))
+            
+            if within_tol:
+                break
+            if max_iter and (i >= max_iter):
+                break
+
+        return fmat
+
     @staticmethod
     def read_TBA3(file, mat_type='VALUE'):
         '''Reads a text file containing one or more matrices in TBA3 format.
@@ -226,7 +259,7 @@ class Matrix(pd.DataFrame):
         mat = Matrix(df)
         
         return mat
-        
+
     @staticmethod
     def read_EMME(file):
         '''Reads a text file containing one or more matrices in EMME format.
@@ -290,33 +323,7 @@ class Matrix(pd.DataFrame):
                 matrix[mat_id] = pd.to_numeric(mat[df_data_cols])           
 
         return matrix
-        
-    def furness(self, TO, TD, tolerance=0.001, max_iter=100):
-        '''Use FRATAR algorithm to adjust (balance) the matrix
-        to target origins and destinations (TO, TD), within a certain tolerance.
-        Will not always converge, hence cap maximum iterations to max_iter.'''
-        
-        sTO = self.TO
-        sTD = self.TD
-        fmat = self.copy()
-        i = 1
-        
-        while True:
-            # Balancing factors (Nan ~> 0, inf ~> 1):
-            A = (TO / fmat.TO).fillna(0).replace([np.inf, -np.inf], 1)
-            B = (TD / fmat.TD).fillna(0).replace([np.inf, -np.inf], 1)
-            fmat = fmat.mul(A, axis=1, level=0).mul(B, axis=1, level=1)
-        
-            i += 1
-            within_tol = not (any((fmat.TO - TO) > tolerance) or any((fmat.TD - TD) > tolerance))
-            
-            if within_tol:
-                break
-            if max_iter and (i >= max_iter):
-                break
-        
-        return fmat
-    
+
     def to_EMME(self, OutputName,
                 file_header='', mat_number_start=100, mat_comment='', 
                 default_val=0, decimals=4):
