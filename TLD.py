@@ -93,10 +93,9 @@ def avgdist(TLD,col,level=-1):
 
 # In[11]:
 
-def TLD_col(mat, dist_band, dist_col=0):
+def TLD_col(mat, dist_band, dist_col=0, normalized=False):
     '''Returns the Trip-Lenght Distribution of mat, 
     based on dist_col, aggregated by dist_band.'''
-    #TODO: implement normalized
     
     if isinstance(dist_col, int):
         dist_col = mat.columns[dist_col]
@@ -107,7 +106,10 @@ def TLD_col(mat, dist_band, dist_col=0):
     TLD = TLD.groupby(by=dist_col).sum()
     TLD.index = TLD.index + dist_band #top end of each band
     TLD.at[0,:]=0 #fill initial zero value
-    return TLD.sort_index()
+    TLD = TLD.sort_index()
+    if normalized:
+        TLD = normalize_TLD(TLD)
+    return TLD
 
 
 # In[12]:
@@ -204,6 +206,7 @@ def read_EMME_TLDs(files):
 
 #TODO: Set xmax, ymax for x and y axes
 def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
+               legend=False, table_font_colors=True,
                prefixes='', suffixes=''):
     '''Produces a graph from TLD, all columns together.
     Includes average distance.
@@ -227,9 +230,12 @@ def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
         raise ValueError("Duplicate names in DataFrame's columns.")
     
     plt.clf()
-    TLD.plot(title='Trip-Length Distribution', legend=True)
-    lgd = plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
-                      fancybox=True, ncol=len(TLD.columns))
+    axs_subplot = TLD.plot(title='Trip-Length Distribution', legend=legend)
+    line_colors = [line.get_color() for line in axs_subplot.lines]
+
+    if legend:
+        lgd = plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1),
+                          fancybox=True, ncol=len(TLD.columns))
     plt.xlabel('Dist')
     plt.ylabel(ylabel)
 
@@ -246,6 +252,11 @@ def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
         loc='upper right')
     #table.set_fontsize(16)
     table.scale(2, 2)
+    
+    if table_font_colors:
+        for i in range(len(line_colors)):
+            #table.get_celld()[(i+1, -1)].set_edgecolor(line_colors[i])
+            table.get_celld()[(i+1, -1)].set_text_props(color=line_colors[i])
 
     oName = OutputName
     plt.savefig(oName, bbox_inches='tight')
@@ -254,19 +265,21 @@ def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
 
 # In[37]:
 
-def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', ylabel='Trips', units=''):
+def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', ylabel='Trips',
+                     units='', legend=True):
     '''Produces a graph for each column of TLD.
     Names based on oFileNamePattern and column names.
     Includes average distance.'''
     for col in TLD:
         oFname = oFileNamePattern.format(col)
-        TLD_to_JPG(TLD[[col]], oFname, ylabel=ylabel, units=units)
+        TLD_to_JPG(TLD[[col]], oFname, ylabel, units, legend)
 
 
 # In[71]:
 
 #TODO: output average distances as DataFrame (and export as csv?)
-def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', ylabel='Trips', units=''):
+def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', ylabel='Trips',
+                           units='', legend=True):
     '''Produces comparison graphs of the columns in each TLD in TLDs list.
     Columns are taken pairwise, in positional order.
     Names based on column names.'''
@@ -274,4 +287,4 @@ def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', ylabel='Trips', 
     for TLD in comparisonTLDs:
         TLDname = '-'.join(TLD.columns)
         OutputName = oFileNamePattern.format(TLDname)
-        TLD_to_JPG(TLD, OutputName=OutputName, ylabel='Trips', units='')
+        TLD_to_JPG(TLD, OutputName, ylabel, units, legend)
