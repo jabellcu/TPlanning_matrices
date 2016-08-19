@@ -3,15 +3,16 @@
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 import matplotlib.pyplot as plt
 import re
 import os
 import scipy.stats as stats
 import pylab
 
-from AuxFunctions import duplicates_in_list, CheckEMMEmatName, zip_df_cols
-from AuxFunctions import CheckEMMEmatNumber, ScatterPlot_ConsecutiveColPairs
-from AuxFunctions import RegressionStats_ConsecutiveColPairs
+#TODO: Check if these are circular references :-/
+from AuxFunctions import *
+from Gravity import *
 
 def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     '''Returns a MultiIndex object with zones for origins and destinations.
@@ -216,6 +217,7 @@ class Matrix(pd.DataFrame):
         ...
 
     #TODO: implement max_iter by time rather than iterations
+    #TODO: break if trip ends are the same in two consecutive iterations
     def furness(self, TO, TD, tolerance=0.001, max_iter=100):
         '''Use FRATAR algorithm to adjust (balance) the matrix
         to target origins and destinations (TO, TD), within a certain tolerance.
@@ -241,6 +243,30 @@ class Matrix(pd.DataFrame):
                 break
 
         return fmat
+
+def ApplyGravityModel(self, TO: pd.DataFrame, TD: pd.DataFrame,
+                      f: stats.rv_continuous, furness=True,
+                      *args, **kwargs) -> Matrix:
+    '''Returns a matrix Tij = Oi*Dj*f(cij)
+    self     - cost matrix
+    TO       - trip origins
+    TD       - trip destinations
+    f        - deterrence function (object)
+    furness  - return furnessed matrix with TO, TD
+    *args, **kwargs - parameters to pass to furness method
+    c, TO and TD must have the same number of columns and the same column names'''
+    
+    same_cols = all([c1==c2==c3 for c1,c2,c3 in zip(c.columns, TO.columns, TD.columns)])
+    if not same_cols:
+        raise ValueError('c, TO and TD must have the same number of columns and the same column names')
+    
+    gravity = self.apply(f.pdf)
+    synthetic = gravity.mul(TO, axis=1, level=0).mul(TD, axis=1, level=1)
+
+    if furness:
+        return synthetic.furness(TO,TD, *args, **kwargs)
+    else:
+        return synthetic
 
     @staticmethod
     def read_TBA3(file, mat_type='VALUE'):

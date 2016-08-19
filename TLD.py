@@ -15,7 +15,7 @@ import os
 import glob
 
 
-# In[64]:
+# In[3]:
 
 from Matrix import Matrix
 from AuxFunctions import zip_df_cols, trim_index_df, duplicates_in_list
@@ -59,14 +59,44 @@ def normalize_TLD(TLD):
     return TLD.apply(lambda x: x / x.sum())
 
 
-# In[7]:
+# In[55]:
+
+def mid_interval_index(idx, level=0, factor=0.5, interval=0):
+    '''Re-index to the medium point of the interval.
+    level    - index level to use
+    factor   - factor to apply to the interval
+    interval - length of the interval. 0 to estimate it.'''
+    
+    if not interval:
+        idx_increments = idx.get_level_values(level) - pd.Series(idx.get_level_values(level)).shift()
+        idx_increments = pd.Series(idx_increments).dropna()
+        interval = min(idx_increments)
+    
+    reidx = idx + interval * factor
+    return reidx
+
+
+# In[57]:
+
+def mid_interval_TLD(TLD, *args, **kwargs):
+    '''Re-index TLD to the medium point of the interval.
+    Useful for estimating gravity model's parameters.
+        level    - index level to use
+        factor   - factor to apply to the interval
+        interval - length of the interval. 0 to estimate it.'''
+    rTLD = TLD.copy()
+    rTLD.index = mid_interval_index(TLD.index, *args, **kwargs)
+    return rTLD
+
+
+# In[9]:
 
 def trim_index_TLD(TLD, index_names_to_keep='from', inplace=False):
     '''Wrapper for trim_index_df, adapted for TLD.'''
     return trim_index_df(TLD, index_names_to_keep, inplace)
 
 
-# In[8]:
+# In[10]:
 
 def to_numeric_TLD(TLD):
     '''Returns TLD where strings have been converted to numbers.'''
@@ -76,14 +106,14 @@ def to_numeric_TLD(TLD):
     return TLD.apply(lambda x: pd.to_numeric(x))
 
 
-# In[9]:
+# In[11]:
 
 def truncate_TLD(TLD, dist):
     '''Truncates a dataframe based on the index values.'''
     return TLD.loc[TLD.index < dist]
 
 
-# In[10]:
+# In[12]:
 
 def avgdist(TLD,col,level=-1):
     '''Returns the average distance (weighted average, SUMPRODUCT)
@@ -91,7 +121,7 @@ def avgdist(TLD,col,level=-1):
     return (TLD[col] * TLD.index.get_level_values(-1)).sum()
 
 
-# In[11]:
+# In[13]:
 
 def TLD_col(mat, dist_band, dist_col=0, normalized=False):
     '''Returns the Trip-Lenght Distribution of mat, 
@@ -113,7 +143,7 @@ def TLD_col(mat, dist_band, dist_col=0, normalized=False):
     return TLD
 
 
-# In[12]:
+# In[14]:
 
 def TLD_SingleDist(mat, dist, dist_band, dist_col=0):
     '''Returns the Trip-Lenght Distribution of mat, 
@@ -130,7 +160,7 @@ def TLD_SingleDist(mat, dist, dist_band, dist_col=0):
     return TLD
 
 
-# In[13]:
+# In[15]:
 
 def TLD_MultiDist(mat, dist, dist_band):
     '''Returns the Trip-Length Distribution of mat.
@@ -153,7 +183,7 @@ def TLD_MultiDist(mat, dist, dist_band):
     return TLD
 
 
-# In[14]:
+# In[16]:
 
 def read_EMME_TLD(file):
     '''Returns TLD df from an EMME TLD report file, with columns:
@@ -183,7 +213,7 @@ def read_EMME_TLD(file):
     return df
 
 
-# In[15]:
+# In[17]:
 
 def read_EMME_TLDs(files):
     '''Reads all TLD reports specified in files
@@ -203,7 +233,7 @@ def read_EMME_TLDs(files):
     return density_abs, density_norm, cumulative_abs, cumulative_norm
 
 
-# In[75]:
+# In[18]:
 
 #TODO: Set xmax, ymax for x and y axes
 def TLD_to_JPG(TLD, OutputName='TLD.png', title='Trip-Length Distribution',
@@ -266,7 +296,7 @@ def TLD_to_JPG(TLD, OutputName='TLD.png', title='Trip-Length Distribution',
     plt.close()
 
 
-# In[37]:
+# In[19]:
 
 def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', *args, **kwargs):
     '''Produces a graph for each column of TLD.
@@ -274,10 +304,10 @@ def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', *args, **kwargs):
     Includes average distance.'''
     for col in TLD:
         oFname = oFileNamePattern.format(col)
-        TLD_to_JPG(TLD[[col]], oFname, ylabel, units, legend)
+        TLD_to_JPG(TLD[[col]], oFname, *args, **kwargs)
 
 
-# In[71]:
+# In[20]:
 
 #TODO: output average distances as DataFrame (and export as csv?)
 def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', *args, **kwargs):
@@ -288,4 +318,4 @@ def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', *args, **kwargs)
     for TLD in comparisonTLDs:
         TLDname = '-'.join(TLD.columns)
         OutputName = oFileNamePattern.format(TLDname)
-        TLD_to_JPG(TLD, OutputName, ylabel, units, legend)
+        TLD_to_JPG(TLD, OutputName, *args, **kwargs)
