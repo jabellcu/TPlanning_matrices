@@ -246,7 +246,7 @@ class Matrix(pd.DataFrame):
         self     - cost matrix
         TO       - trip origins
         TD       - trip destinations
-        f        - deterrence function (object) or dictionary of {col: function}
+        f        - deterrence function (object) or dictionary of {col: [functions]}
         furness  - return furnessed matrix with TO, TD
         *args, **kwargs - parameters to pass to furness method
         c, TO and TD must have the same number of columns and the same column names'''
@@ -258,12 +258,16 @@ class Matrix(pd.DataFrame):
         if isinstance(f, stats._distn_infrastructure.rv_frozen):
             gravity = self.apply(f.pdf)
         elif isinstance(f, dict):
-            gravity = pd.DataFrame()
+            #TODO: fix, MultiIndex is not working
+            cols = [(k, d.dist.name) for k,dlst in f.items() for d in dlst]
+            colidx = pd.MultiIndex.from_tuples(cols)
+            gravity = pd.DataFrame(index=self.index, columns=colidx)
             for col in self:
-                try:
-                    gravity[col] = f.pdf(self['col'])
-                except:
-                    gravity[col] = self[col]
+                for distrib in f[col]:
+                    try:
+                        gravity.loc[:,(col, distrib.dist.name)] = distrib.pdf(self[col])
+                    except KeyError:
+                        gravity.iloc[:,(col, col)] = self[col]
         else:
             raise ValueError("f must be a stats distribution of a dict of {col: distirbution}")
 
