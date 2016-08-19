@@ -3,16 +3,13 @@
 
 import numpy as np
 import pandas as pd
-from scipy import stats
 import matplotlib.pyplot as plt
+from scipy import stats
 import re
 import os
-import scipy.stats as stats
-import pylab
 
 #TODO: Check if these are circular references :-/
 from AuxFunctions import *
-from Gravity import *
 
 def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     '''Returns a MultiIndex object with zones for origins and destinations.
@@ -244,29 +241,39 @@ class Matrix(pd.DataFrame):
 
         return fmat
 
-def ApplyGravityModel(self, TO: pd.DataFrame, TD: pd.DataFrame,
-                      f: stats.rv_continuous, furness=True,
-                      *args, **kwargs) -> Matrix:
-    '''Returns a matrix Tij = Oi*Dj*f(cij)
-    self     - cost matrix
-    TO       - trip origins
-    TD       - trip destinations
-    f        - deterrence function (object)
-    furness  - return furnessed matrix with TO, TD
-    *args, **kwargs - parameters to pass to furness method
-    c, TO and TD must have the same number of columns and the same column names'''
-    
-    same_cols = all([c1==c2==c3 for c1,c2,c3 in zip(c.columns, TO.columns, TD.columns)])
-    if not same_cols:
-        raise ValueError('c, TO and TD must have the same number of columns and the same column names')
-    
-    gravity = self.apply(f.pdf)
-    synthetic = gravity.mul(TO, axis=1, level=0).mul(TD, axis=1, level=1)
+    def ApplyGravityModel(self, TO, TD, f, furness=True, *args, **kwargs):
+        '''Returns a matrix Tij = Oi*Dj*f(cij)
+        self     - cost matrix
+        TO       - trip origins
+        TD       - trip destinations
+        f        - deterrence function (object) or dictionary of {col: function}
+        furness  - return furnessed matrix with TO, TD
+        *args, **kwargs - parameters to pass to furness method
+        c, TO and TD must have the same number of columns and the same column names'''
+        
+        same_cols = all([c1==c2==c3 for c1,c2,c3 in zip(self.columns, TO.columns, TD.columns)])
+        if not same_cols:
+            raise ValueError('c, TO and TD must have the same number of columns and the same column names')
+        
+        if isinstance(f, stats._distn_infrastructure.rv_frozen):
+            gravity = self.apply(f.pdf)
+        elif isinstance(f, dict):
+            gravity = pd.DataFrame()
+            for col in self:
+                try:
+                    gravity[col] = f.pdf(self['col'])
+                except:
+                    gravity[col] = self[col]
+        else:
+            raise ValueError("f must be a stats distribution of a dict of {col: distirbution}")
 
-    if furness:
-        return synthetic.furness(TO,TD, *args, **kwargs)
-    else:
-        return synthetic
+        gravity = Matrix(gravity)
+        synthetic = gravity.mul(TO, axis=1, level=0).mul(TD, axis=1, level=1)
+
+        if furness:
+            return synthetic.furness(TO,TD, *args, **kwargs)
+        else:
+            return synthetic
 
     @staticmethod
     def read_TBA3(file, mat_type='VALUE'):

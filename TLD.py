@@ -18,7 +18,7 @@ import glob
 # In[3]:
 
 from Matrix import Matrix
-from AuxFunctions import zip_df_cols, trim_index_df, duplicates_in_list
+from AuxFunctions import *
 
 
 # In[4]:
@@ -76,17 +76,20 @@ def mid_interval_index(idx, level=0, factor=0.5, interval=0):
     return reidx
 
 
-# In[57]:
+# In[66]:
 
-def mid_interval_TLD(TLD, *args, **kwargs):
+def mid_interval_TLD(TLD, inplace=False, *args, **kwargs):
     '''Re-index TLD to the medium point of the interval.
     Useful for estimating gravity model's parameters.
         level    - index level to use
         factor   - factor to apply to the interval
         interval - length of the interval. 0 to estimate it.'''
-    rTLD = TLD.copy()
-    rTLD.index = mid_interval_index(TLD.index, *args, **kwargs)
-    return rTLD
+    if inplace:
+        TLD.index = mid_interval_index(TLD.index, *args, **kwargs)
+    else:
+        rTLD = TLD.copy()
+        rTLD.index = mid_interval_index(TLD.index, *args, **kwargs)
+        return rTLD
 
 
 # In[9]:

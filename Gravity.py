@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 # In[2]:
 
-from Matrix import *
+from Matrix import Matrix
 from TLD import *
 from AuxFunctions import *
 
@@ -115,6 +115,12 @@ np.array([-3.39581168,  6.73004206])
 def fit_distribs(TLD, distrib_names, *args, **kwargs):
     '''Returns a dictionary of distributions fitted for each column in TLD.
     Drops NaN values.'''
+    
+    if isinstance(distrib_names, str):
+        distrib_names = list(distrib_names)
+    elif not isinstance(distrib_names, list):
+        raise ValueError("distrib_names must be a distirbution name or a list.")
+    
     distribs = {}
     for col in TLD:
         distribs[col] = [getattr(stats, fn)(
@@ -165,33 +171,3 @@ def lognorm_mu_sigma(params):
     shape, loc, scale = params
     mu, sigma = np.log(scale), shape
     return mu, sigma
-
-
-# In[92]:
-
-def ApplyGravityModel(c: Matrix,
-                      TO: pd.DataFrame,
-                      TD: pd.DataFrame,
-                      f: stats.rv_continuous,
-                      furness=True,
-                      *args, **kwargs) -> Matrix:
-    '''Returns a matrix Tij = Oi*Dj*f(cij)
-    c        - cost matrix
-    TO       - trip origins
-    TD       - trip destinations
-    f        - deterrence function (object)
-    furness  - return furnessed matrix with TO, TD
-    *args, **kwargs - parameters to pass to furness method
-    c, TO and TD must have the same number of columns and the same column names'''
-    
-    same_cols = all([c1==c2==c3 for c1,c2,c3 in zip(c.columns, TO.columns, TD.columns)])
-    if not same_cols:
-        raise ValueError('c, TO and TD must have the same number of columns and the same column names')
-    
-    gravity = c.apply(f.pdf)
-    synthetic = gravity.mul(TO, axis=1, level=0).mul(TD, axis=1, level=1)
-
-    if furness:
-        return synthetic.furness(TO,TD, *args, **kwargs)
-    else:
-        return synthetic

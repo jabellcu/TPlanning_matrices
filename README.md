@@ -1,8 +1,10 @@
 # TPlanning_matrices
-Matrix manipulation toolkit for transport planners written in python.
+Matrix manipulation toolkit (high level functions) for transport planners
+written in python.
 
 Matrices:
  - Input / Output in different formats (e.g.: EMME, TBA3).
+ - Submatrices
  - Calculating trip-ends.
  - Conversion from one zoning system to another.
    (Generalization for both cost and demand -trip- matrices)
