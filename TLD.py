@@ -106,6 +106,7 @@ def TLD_col(mat, dist_band, dist_col=0, normalized=False):
     TLD = TLD.groupby(by=dist_col).sum()
     TLD.index = TLD.index + dist_band #top end of each band
     TLD.at[0,:]=0 #fill initial zero value
+    
     TLD = TLD.sort_index()
     if normalized:
         TLD = normalize_TLD(TLD)
@@ -205,9 +206,11 @@ def read_EMME_TLDs(files):
 # In[75]:
 
 #TODO: Set xmax, ymax for x and y axes
-def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
+def TLD_to_JPG(TLD, OutputName='TLD.png', title='Trip-Length Distribution',
+               ylabel='Trips', units='',
                legend=False, table_font_colors=True,
-               prefixes='', suffixes=''):
+               prefixes='', suffixes='',
+               *args, **kwargs):
     '''Produces a graph from TLD, all columns together.
     Includes average distance.
         prefixes         - to prepend to each column. Use as a marker.
@@ -230,7 +233,7 @@ def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
         raise ValueError("Duplicate names in DataFrame's columns.")
     
     plt.clf()
-    axs_subplot = TLD.plot(title='Trip-Length Distribution', legend=legend)
+    axs_subplot = TLD.plot(title=title, legend=legend)
     line_colors = [line.get_color() for line in axs_subplot.lines]
 
     if legend:
@@ -265,8 +268,7 @@ def TLD_to_JPG(TLD, OutputName='TLD.png', ylabel='Trips', units='',
 
 # In[37]:
 
-def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', ylabel='Trips',
-                     units='', legend=True):
+def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', *args, **kwargs):
     '''Produces a graph for each column of TLD.
     Names based on oFileNamePattern and column names.
     Includes average distance.'''
@@ -278,8 +280,7 @@ def TLD_cols_to_JPGs(TLD, oFileNamePattern='TLD_{}.png', ylabel='Trips',
 # In[71]:
 
 #TODO: output average distances as DataFrame (and export as csv?)
-def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', ylabel='Trips',
-                           units='', legend=True):
+def TLD_comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', *args, **kwargs):
     '''Produces comparison graphs of the columns in each TLD in TLDs list.
     Columns are taken pairwise, in positional order.
     Names based on column names.'''
