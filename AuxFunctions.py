@@ -142,15 +142,24 @@ def randomizeSeries(S, fraction):
 def randomizeTE(TE):
     return TE.apply(randomizeSeries, args=[10])
 
-def zip_df_cols(dflist):
-    '''generator yields dataframes formed of pair-wise concatenation
-    of columns from each df in the input dataframe list.'''
-    max_coln = max([len(df.columns) for df in dflist])
+def zip_df_cols(dflist, default_col_index=None):
+    '''generator yields dataframes formed of pair-wise concatenation of columns
+    from each df in the input dataframe list.
+    If the dataframes are of uneven length, missing values are filled-in with
+    the first column of each df. This is usefull when broadcasting one column
+    to the rest of the dataframes'''
+    dflist_coln = [len(df.columns) for df in dflist]
+    max_coln = max(dflist_coln)
     for i in range(max_coln):
-        try:
-            yield pd.concat([df.iloc[:,i] for df in dflist], axis=1)
-        except IndexError:
-            raise IndexError('Input dataframes have different number of columns.')
+        if default_col_index is not None:
+            #default to first column for df with not enough
+            use_cols = [i if i <= (coln-1) else 0 for coln in dflist_coln]
+            yield pd.concat([df.iloc[:,col] for col,df in zip(use_cols, dflist)], axis=1)
+        else:
+            try:
+                yield pd.concat([df.iloc[:,i] for df in dflist], axis=1)
+            except IndexError:
+                raise IndexError('Input dataframes have different number of columns.')
 
 def df_difference(dfi, dff, percent=False):
     '''Returns dff-dfi difference. Asumes compatible indexes.
@@ -177,7 +186,7 @@ def df_difference(dfi, dff, percent=False):
     return diff
 
 def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
-                xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=0,
+                xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=None,
                 prefixes='', suffixes=''):
     
     '''Produces scatterplot graphs of consecutive df columns.
@@ -204,22 +213,38 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
         raise ValueError("Duplicate names in DataFrame's columns.")
         
     cols = df.columns
+    #TODO: review xaxis_eq_yaxis and homogeneous_axis
     minv = df.min().min()
     maxv = df.max().max()
+
+    if min_axis is not None:
+        minv = min_axis
     
     for colin, colfn in zip(cols, cols[1:]):
         ColPairName = ' - '.join([colin, colfn])
         
-        if not homogeneous_axis:
-            minv = min(df[colin].min(), df[colfn].min())
-            maxv = max(df[colin].max(), df[colfn].max())
+        xminv = df[colin].min()
+        xmaxv = df[colin].max()
+        yminv = df[colfn].min()
+        ymaxv = df[colfn].max()
+
+        if homogeneous_axis:
+            xminv = minv
+            xmaxv = maxv
+            yminv = minv
+            ymaxv = maxv
         
-        if min_axis:
-            minv = min_axis
-        
+        if xaxis_eq_yaxis:
+            minv = min(xminv, yminv)
+            maxv = max(xmaxv, ymaxv)
+            xminv = minv
+            xmaxv = maxv
+            yminv = minv
+            ymaxv = maxv
+
         #regression
         slope, intercept, r_val, p_val, slope_std_err = stats.linregress(df[colin], df[colfn])
-        regression_formula = '$y={:.3f}*x{:+.3f}$\n$R^2: {:.3f}$'.format(
+        regression_formula = '$y={:.2f}*x{:+.2f}$\n$R^2: {:.3f}$'.format(
                                 slope, intercept, r_val)
 
         #format plot
@@ -232,14 +257,13 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
         plt.plot(df[colin], slope * df[colin] + intercept)
 
         pylab.annotate(regression_formula, xycoords='axes fraction',
-                       xy=(.55,.05), fontsize=20,
+                       xy=(.60,.05), fontsize=16,
                        bbox=dict(facecolor='white', edgecolor='black',
                                  boxstyle='round,pad=0.3'))
 
-        if xaxis_eq_yaxis:
-            axes = plt.gca()
-            axes.set_xlim([minv,maxv])
-            axes.set_ylim([minv,maxv])
+        axes = plt.gca()
+        axes.set_xlim([xminv,xmaxv])
+        axes.set_ylim([yminv,ymaxv])
 
         #export plot
         oFileName = oFileNamePattern.format(ColPairName)

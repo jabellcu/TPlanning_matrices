@@ -121,7 +121,7 @@ class Matrix(pd.DataFrame):
     def from_panel(panel):
         ...
 
-    def complete(self, zones, names=['O', 'D', fill_value=0]):
+    def complete(self, zones, names=['O', 'D'], fill_value=0):
         '''Completes the matrix index with specified zones. Ignores existing zones.'''
         if isinstance(zones, pd.MultiIndex):
             #zones is a zoning system already (MultiIndex)
