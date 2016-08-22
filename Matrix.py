@@ -121,18 +121,18 @@ class Matrix(pd.DataFrame):
     def from_panel(panel):
         ...
 
-    def complete(self, zones):
+    def complete(self, zones, names=['O', 'D', fill_value=0]):
         '''Completes the matrix index with specified zones. Ignores existing zones.'''
         if isinstance(zones, pd.MultiIndex):
             #zones is a zoning system already (MultiIndex)
             zoning = zones
         elif isinstance(zones, list):
             #zones is just a list that needs to be expanded
-            zoning = Zoning(zones)
+            zoning = Zoning(zones, names=names)
         else:
             raise ValueError('"zones" must be list of zones or zoning system (MultiIndex)')
         zoning_union = self.index.union(zoning)
-        return self.reindex(index=zoning_union)
+        return self.reindex(index=zoning_union, fill_value=fill_value)
 
     def submatrix(self, zoning: pd.MultiIndex):
         '''Returns a submatrix with the origins and destinations specified in zoning'''
