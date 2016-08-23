@@ -305,7 +305,8 @@ def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes='', **kwargs):
     
     return regression_df
 
-def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}', **kwargs):
+def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}', 
+        output_scatterplots=True, output_regresion_stats=True, **kwargs):
     '''Produces scatterplots and regresion statistics of consecutive column pairs.
     df can be a single dataframe or a list of dataframes.
     Returns dataframe regression stats. Parameters:
@@ -316,22 +317,30 @@ def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}', **kwargs):
         suffixes         - to append to each column. Use as a marker.
     '''
     if isinstance(df, list):
+
+        if len(df) == 1:
+            tdfs = df
+        else:
+            tdfs = zip_df_cols(df, default_col_index=0)
         
         regression_stats_dfs = []
-        for df in zip_df_cols(df, default_col_index=0):
-            ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern, **kwargs)
+        for df in tdfs:
+            if output_scatterplots:
+                ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern, **kwargs)
             regression_stats_dfs.append(RegressionStats_ConsecutiveColPairs(df))
             
         regression_stats = pd.concat(regression_stats_dfs)
         
     elif isinstance(df, pd.DataFrame):
         
-        ScatterPlot_ConsecutiveColPairs(df, **kwargs)
+        if output_scatterplots:
+            ScatterPlot_ConsecutiveColPairs(df, **kwargs)
         regression_stats = RegressionStats_ConsecutiveColPairs(df)
         
     else:
         
         raise ValueError("Input must be a pandas DataFrame or list of DataFrames")
         
-    regression_stats.to_csv(oFileNamePattern.replace('{}', 'regression_stats') + '.csv')
+    if output_regresion_stats:
+        regression_stats.to_csv(oFileNamePattern.replace('{}', 'regression_stats') + '.csv')
     return regression_stats
