@@ -187,7 +187,7 @@ def df_difference(dfi, dff, percent=False):
 
 def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
                 xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=None,
-                prefixes='', suffixes=''):
+                prefixes='', suffixes='', **kwargs):
     
     '''Produces scatterplot graphs of consecutive df columns.
         xaxis_eq_yaxis   - both x and y axis' maximum values are the same
@@ -229,12 +229,14 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
         ymaxv = df[colfn].max()
 
         if homogeneous_axis:
+            #use the global min/max
             xminv = minv
             xmaxv = maxv
             yminv = minv
             ymaxv = maxv
         
         if xaxis_eq_yaxis:
+            #use local min/max for each scatterplot
             minv = min(xminv, yminv)
             maxv = max(xmaxv, ymaxv)
             xminv = minv
@@ -249,7 +251,8 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
 
         #format plot
         if title:
-            df.plot(kind= 'scatter', x=colin, y=colfn, title=title, legend =True)
+            df.plot(kind= 'scatter', x=colin, y=colfn,
+                    title=title.format(ColPairName), legend =True)
         else:
             df.plot(kind= 'scatter', x=colin, y=colfn, legend =True)
 
@@ -270,7 +273,7 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
         plt.savefig(oFileName)
         plt.close()
 
-def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes=''):
+def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes='', **kwargs):
     '''Returns a dataframe with the regression stats of consecutive df columns.
         prefixes         - to prepend to each column. Use as a marker.
         suffixes         - to append to each column. Use as a marker.
@@ -301,3 +304,34 @@ def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes=''):
         regression_df.loc[ColPairName] = [slope, intercept, r_val]
     
     return regression_df
+
+def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}', **kwargs):
+    '''Produces scatterplots and regresion statistics of consecutive column pairs.
+    df can be a single dataframe or a list of dataframes.
+    Returns dataframe regression stats. Parameters:
+        xaxis_eq_yaxis   - both x and y axis' maximum values are the same
+        homogeneous_axis - all scatterplots for input df have the same axis
+        min_axis         - minimum axis values
+        prefixes         - to prepend to each column. Use as a marker.
+        suffixes         - to append to each column. Use as a marker.
+    '''
+    if isinstance(df, list):
+        
+        regression_stats_dfs = []
+        for df in zip_df_cols(df, default_col_index=0):
+            ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern, **kwargs)
+            regression_stats_dfs.append(RegressionStats_ConsecutiveColPairs(df))
+            
+        regression_stats = pd.concat(regression_stats_dfs)
+        
+    elif isinstance(df, pd.DataFrame):
+        
+        ScatterPlot_ConsecutiveColPairs(df, **kwargs)
+        regression_stats = RegressionStats_ConsecutiveColPairs(df)
+        
+    else:
+        
+        raise ValueError("Input must be a pandas DataFrame or list of DataFrames")
+        
+    regression_stats.to_csv(oFileNamePattern.replace('{}', 'regression_stats') + '.csv')
+    return regression_stats
