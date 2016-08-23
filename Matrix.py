@@ -140,22 +140,23 @@ class Matrix(pd.DataFrame):
         return self.reindex(zoning_intersect)
 
     def rezone(self, mapping: pd.DataFrame, mapping_cols=['old', 'new'],
-               weight_cols=None, calculate_proportions=True,
+               mapping_weight_cols=None, calculate_proportions=True,
                min_weight=0.00000001):
         '''Changes the zoning system based on mapping.
         A mapping is a correspondence between old zones and new zones.
         
-           weights - ['Owght', 'Dwght'] to use for zone disaggregation
+           weights - columns of mapping, ['Owght', 'Dwght'] to use for
+               zone disaggregation.
            calculate_proportions - if True, weight proportions will be 
-               calculated and applied
-           min_weight - value for weights with value zero'''
+               calculated and applied.
+           min_weight - value for weights with value zero.'''
         
-        if weight_cols:
+        if mapping_weight_cols:
             
-            if len(weight_cols)!=2:
-                raise ValueError("weight_cols must be as in ['Owght', 'Dwght']")
-            
-            Owght, Dwght = weight_cols
+            try:
+                Owght, Dwght = mapping_weight_cols
+            except:
+                raise ValueError("mapping_weight_cols must be as in ['Owght', 'Dwght']")
             
             #cap to min_weight
             Omap = mapping[mapping_cols].copy()
@@ -178,7 +179,7 @@ class Matrix(pd.DataFrame):
                       left_on=self.index.names[-1], right_on=mapping_cols[0],
                       suffixes=suffixes)
         
-        if weight_cols:
+        if mapping_weight_cols:
             if Owght == Dwght:
                 Owght, Dwght = ['{}{}'.format(Owght,s) for s in suffixes]
                 
@@ -197,6 +198,31 @@ class Matrix(pd.DataFrame):
             print("WARNING: rezoned matrix does not preserve the matrix totals.")
         
         return mat
+
+    #TODO: merge rezone and rezone_weighted into rezone
+    def rezone_weighted(self, mapping: pd.DataFrame, weights,
+               mapping_cols=['old', 'new'], mapping_weight_cols=None,
+               calculate_proportions=True, min_weight=0.00000001):
+
+        wght = weights.where(weights > min_weight, min_weight)
+        wmat = self.mul(weights, fill_value=0)
+        rezoned_wmat = wmat.rezone(mapping,
+                            mapping_cols=mapping_cols,
+                            mapping_weight_cols=mapping_weight_cols,
+                            calculate_proportions=calculate_proportions,
+                            min_weight=min_weight)
+        rezoned_weights = weights.rezone(mapping,
+                            mapping_cols=mapping_cols,
+                            mapping_weight_cols=mapping_weight_cols,
+                            calculate_proportions=calculate_proportions,
+                            min_weight=min_weight)
+        rezoned_weighted_mat = rezoned_wmat / rezoned_weights
+        
+        # Is this aggregation necessary?
+        rezoned_weighted_mat = (
+            rezoned_weighted_mat.reset_index().groupby(rezoned_weighted_mat.index.names).sum())
+
+        return rezoned_weighted_mat
 
         #TODO: update this function to allow outputing a weighted average (eg: for costs)
         # Deal with 0 trips in wght file, and:
