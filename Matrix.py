@@ -163,6 +163,9 @@ class Matrix(pd.DataFrame):
                 outputs matrices.
             '''
         
+        #Deal with 0 values in mapping: NOT IN USE
+        #mapping = mapping.where(mapping>min_val, min_val) #DEBUG
+
         if weights is None:
             if mapping_split_cols:
                 
@@ -215,10 +218,13 @@ class Matrix(pd.DataFrame):
         else:
             # Using weights
             # 0) Deal with 0 trips in wght file:
-            wght = weights.where(weights > min_val, min_val)
+            #wght = weights.where(weights > min_val, min_val) #DEBUG
+            # Is this necessary?
 
             # 1) Multiply src_file by wght_file
-            wmat = self.mul(weights, fill_value=0)
+            wmat = self.mul(wght, fill_value=0)
+            # Deal with 0 values in input matrix: NOT IN USE
+            #wmat = self.where(self > min_val, min_val).mul(wght, fill_value=0) #DEBUG
 
             # 2) Disaggregate src x wght as if it was a demand matrix
             rezoned_wmat = wmat.rezone(mapping,
@@ -228,14 +234,15 @@ class Matrix(pd.DataFrame):
                                 min_val=min_val)
 
             # 3) Disaggregate wght as a demmand matrix as well
-            rezoned_weights = weights.rezone(mapping,
+            rezoned_weights = wght.rezone(mapping,
                                 mapping_cols=mapping_cols,
                                 mapping_split_cols=mapping_split_cols,
                                 calculate_proportions=calculate_proportions,
                                 min_val=min_val)
             
             # 4) Divide src x wght / wght at hyl level
-            rezoned_weighted_mat = rezoned_wmat / rezoned_weights
+            rezoned_weighted_mat = rezoned_wmat.div(rezoned_weights,
+                    fill_value=0)
 
             return rezoned_weighted_mat
 
@@ -380,7 +387,7 @@ class Matrix(pd.DataFrame):
             df_idx_cols = df_cols[:-1]
             df_data_col = df_cols[-1]
 
-            #this avoids repeating names:
+            #this avoids repeated matrix names:
             mat_id = '{}{}'.format(matn, df_data_col)
             df_cols = df_idx_cols + [mat_id]
 
@@ -390,13 +397,10 @@ class Matrix(pd.DataFrame):
 
             data_df[mat_id] = mat
 
-        #numeric is needed for Matrix methods to work as expected
-        #matrix[mat_id] = pd.to_numeric(mat[df_data_cols])
-
         matrix = pd.concat(data_df.values(), axis=1)
 
-
-        return matrix
+        #numeric is needed for Matrix methods to work as expected
+        return matrix.apply(pd.to_numeric)
 
     def to_EMME(self, OutputName,
                 file_header='', mat_number_start=100, mat_comment='', 
