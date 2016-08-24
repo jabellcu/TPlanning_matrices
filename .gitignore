@@ -95,3 +95,4 @@ ENV/
 %HOMEDRIVE%%HOMEPATH%/.config/git/gitk
 
 *.swp
+DEBUG.ipynb

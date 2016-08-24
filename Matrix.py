@@ -139,99 +139,105 @@ class Matrix(pd.DataFrame):
         zoning_intersect = self.index.intersection(zoning)
         return self.reindex(zoning_intersect)
 
-    def rezone(self, mapping: pd.DataFrame, mapping_cols=['old', 'new'],
-               mapping_weight_cols=None, calculate_proportions=True,
-               min_weight=0.00000001):
+    def rezone(self, mapping, mapping_cols=['old', 'new'],
+               mapping_split_cols=None, calculate_proportions=True,
+               weights=None, min_val=0.00000001, tol=0.001):
         '''Changes the zoning system based on mapping.
         A mapping is a correspondence between old zones and new zones.
+
+            mapping - pd.DataFrame
+            mapping_cols - columns in mapping to use:
+                [ExistingZoneSystem, NewZoneSystem]
+            mapping_split_cols - columns in mapping to use for zone split
+                e.g.: if mapping includes zone disaggregation
+            calculate_proportions - True if mapping_split_cols contain
+                absolute values and proportions must be calculated.
+                False if mapping_split_cols already have propotions.
+            weights - Matrix of weights to apply to self before rezoning.
+                if weights are used, rezone will return the equivalent
+                of a weighted average of self (input matrix).
+                weights must have overlapping columns with self.
+            min_val - value for mapping_split_cols and weights with
+                value zero.
+            tol - tolerance to check differences between input and
+                outputs matrices.
+            '''
         
-           weights - columns of mapping, ['Owght', 'Dwght'] to use for
-               zone disaggregation.
-           calculate_proportions - if True, weight proportions will be 
-               calculated and applied.
-           min_weight - value for weights with value zero.'''
-        
-        if mapping_weight_cols:
-            
-            try:
-                Owght, Dwght = mapping_weight_cols
-            except:
-                raise ValueError("mapping_weight_cols must be as in ['Owght', 'Dwght']")
-            
-            #cap to min_weight
-            Omap = mapping[mapping_cols].copy()
-            Omap[Owght] = mapping[Owght].where(mapping[Owght] > min_weight, min_weight)
-            Dmap = mapping[mapping_cols].copy()
-            Dmap[Dwght] = mapping[Dwght].where(mapping[Dwght] > min_weight, min_weight)
-            
-            if calculate_proportions:
-                #proportions always respect 'old' mapping column
-                Omap[Owght] = Omap.groupby(mapping_cols[0])[Owght].apply(lambda x: (x/x.sum()))
-                Dmap[Dwght] = Dmap.groupby(mapping_cols[0])[Dwght].apply(lambda x: (x/x.sum()))
-        else:
-            Omap = mapping.reset_index()[mapping_cols]
-            Dmap = Omap
-        
-        suffixes = ['_' + n for n in self.index.names]
-        mat = pd.merge(self.reset_index(), Omap.reset_index(),
-                      left_on=self.index.names[-2], right_on=mapping_cols[0])
-        mat = pd.merge(mat, Dmap.reset_index(),
-                      left_on=self.index.names[-1], right_on=mapping_cols[0],
-                      suffixes=suffixes)
-        
-        if mapping_weight_cols:
-            if Owght == Dwght:
-                Owght, Dwght = ['{}{}'.format(Owght,s) for s in suffixes]
+        if weights is None:
+            if mapping_split_cols:
                 
-            for col in self:
-                mat[col] = mat[col] * mat[Owght] * mat[Dwght]
-        
-        NewODnames = ['{}{}'.format(mapping_cols[1],s) for s in suffixes]
-        
-        aux_cols = list(set(mat.columns) - set(self.columns) - set(NewODnames))
-        mat = mat.drop(aux_cols, axis=1)
-        
-        mat = mat.groupby(NewODnames).sum()
-        mat = Matrix(mat)
-        
-        if not all(x==y for x,y in zip(self.TOTALS, mat.TOTALS)):
-            print("WARNING: rezoned matrix does not preserve the matrix totals.")
-        
-        return mat
+                try:
+                    Owght, Dwght = mapping_split_cols
+                except:
+                    raise ValueError("mapping_split_cols must be as in ['Owght', 'Dwght']")
+                
+                #cap to min_val
+                Omap = mapping[mapping_cols].copy()
+                Omap[Owght] = mapping[Owght].where(mapping[Owght] > min_val, min_val)
+                Dmap = mapping[mapping_cols].copy()
+                Dmap[Dwght] = mapping[Dwght].where(mapping[Dwght] > min_val, min_val)
+                
+                if calculate_proportions:
+                    #proportions always respect 'old' mapping column
+                    Omap[Owght] = Omap.groupby(mapping_cols[0])[Owght].apply(lambda x: (x/x.sum()))
+                    Dmap[Dwght] = Dmap.groupby(mapping_cols[0])[Dwght].apply(lambda x: (x/x.sum()))
+            else:
+                Omap = mapping.reset_index()[mapping_cols]
+                Dmap = Omap
+            
+            suffixes = ['_' + n for n in self.index.names]
+            mat = pd.merge(self.reset_index(), Omap.reset_index(),
+                          left_on=self.index.names[-2], right_on=mapping_cols[0])
+            mat = pd.merge(mat, Dmap.reset_index(),
+                          left_on=self.index.names[-1], right_on=mapping_cols[0],
+                          suffixes=suffixes)
+            
+            if mapping_split_cols:
+                if Owght == Dwght:
+                    Owght, Dwght = ['{}{}'.format(Owght,s) for s in suffixes]
+                    
+                for col in self:
+                    mat[col] = mat[col] * mat[Owght] * mat[Dwght]
+            
+            NewODnames = ['{}{}'.format(mapping_cols[1],s) for s in suffixes]
+            
+            aux_cols = list(set(mat.columns) - set(self.columns) - set(NewODnames))
+            mat = mat.drop(aux_cols, axis=1)
+            
+            mat = mat.groupby(NewODnames).sum()
+            mat = Matrix(mat)
+            
+            if not np.allclose(self.TOTALS, mat.TOTALS, rtol=tol, atol=tol):
+                print("WARNING: rezoned matrix does not preserve the matrix totals.")
 
-    #TODO: merge rezone and rezone_weighted into rezone
-    def rezone_weighted(self, mapping: pd.DataFrame, weights,
-               mapping_cols=['old', 'new'], mapping_weight_cols=None,
-               calculate_proportions=True, min_weight=0.00000001):
+            return mat
 
-        wght = weights.where(weights > min_weight, min_weight)
-        wmat = self.mul(weights, fill_value=0)
-        rezoned_wmat = wmat.rezone(mapping,
-                            mapping_cols=mapping_cols,
-                            mapping_weight_cols=mapping_weight_cols,
-                            calculate_proportions=calculate_proportions,
-                            min_weight=min_weight)
-        rezoned_weights = weights.rezone(mapping,
-                            mapping_cols=mapping_cols,
-                            mapping_weight_cols=mapping_weight_cols,
-                            calculate_proportions=calculate_proportions,
-                            min_weight=min_weight)
-        rezoned_weighted_mat = rezoned_wmat / rezoned_weights
-        
-        # Is this aggregation necessary?
-        rezoned_weighted_mat = (
-            rezoned_weighted_mat.reset_index().groupby(rezoned_weighted_mat.index.names).sum())
+        else:
+            # Using weights
+            # 0) Deal with 0 trips in wght file:
+            wght = weights.where(weights > min_val, min_val)
 
-        return rezoned_weighted_mat
+            # 1) Multiply src_file by wght_file
+            wmat = self.mul(weights, fill_value=0)
 
-        #TODO: update this function to allow outputing a weighted average (eg: for costs)
-        # Deal with 0 trips in wght file, and:
-        ## 1) Multiply src_file by wght_file
-        ## 2) Disaggregate src x wght as if it was a demand matrix
-        ## 3) Disaggregate wght as a demmand matrix as well
-        ## 4) merge src_wght_hyl and wght_hyl on the first two columns:
-        ## 5) Divide src x wght / wght at hyl level
-        ## Aggregate!
+            # 2) Disaggregate src x wght as if it was a demand matrix
+            rezoned_wmat = wmat.rezone(mapping,
+                                mapping_cols=mapping_cols,
+                                mapping_split_cols=mapping_split_cols,
+                                calculate_proportions=calculate_proportions,
+                                min_val=min_val)
+
+            # 3) Disaggregate wght as a demmand matrix as well
+            rezoned_weights = weights.rezone(mapping,
+                                mapping_cols=mapping_cols,
+                                mapping_split_cols=mapping_split_cols,
+                                calculate_proportions=calculate_proportions,
+                                min_val=min_val)
+            
+            # 4) Divide src x wght / wght at hyl level
+            rezoned_weighted_mat = rezoned_wmat / rezoned_weights
+
+            return rezoned_weighted_mat
 
     #TODO
     def fill_intrazonals(self, dist, func):
@@ -337,22 +343,21 @@ class Matrix(pd.DataFrame):
             } #TODO: remove difference by TO /TD / T ??
 
         ## RegEx to read EMME format:
-        mat_re = re.compile(r'a matrix\s*=\s*(mo|md|mf|ms)(\d+)\s+(\w+?)\s+(-?\d+)\s+(.+?)\n(.*)\n(?=a matrix|d matrix|\Z|\s*\n)',
+        mat_re = re.compile(r'a matrix\s*=\s*(mo|md|mf|ms)(\d+)\s+(\w+?)\s+(-?\d+)\s+(.+?)\n(.*?)\n(?=a matrix|d matrix|\Z|\s*\n)',
                            re.DOTALL | re.MULTILINE)
         # re groups:
         # mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data
 
         EMMErecord_re = {
-            'md': re.compile(r'\s*all\s+(\d+)\s*:\s*(-?\.?\d+\.?\d*)\n'),
-            'mo': re.compile(r'\s*(\d+)\s+all\s*:\s*(-?\.?\d+\.?\d*)\n'),
-            'mf': re.compile(r'\s*(\d+)\s+(\d+)\s*:\s*(-?\.?\d+\.?\d*)\n')
+            'md': re.compile(r'\s*all\s+(\d+)\s*:\s*(-?\.?\d+\.?\d*)\n?'),
+            'mo': re.compile(r'\s*(\d+)\s+all\s*:\s*(-?\.?\d+\.?\d*)\n?'),
+            'mf': re.compile(r'\s*(\d+)\s+(\d+)\s*:\s*(-?\.?\d+\.?\d*)\n?')
             } #TODO: implement ms
 
         ## Read Data
         data = {}
         filen = os.path.basename(file)
         fn, fext = os.path.splitext(filen)
-        data[fn] = {}
         with open(file, 'r') as f:
             fcontent = f.read()
             #each source file might contain several matrices
@@ -360,30 +365,36 @@ class Matrix(pd.DataFrame):
             for matb in mat_blocks:
                 mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data = matb
                 mat_rows = EMMErecord_re[mat_type].findall(mat_data)
-                #TODO: Use named tuples
-                data[fn][mat_name] = dict(zip(
+                data[mat_name] = dict(zip(
                    'mat_type, mat_num, mat_default, mat_desc, mat_rows'.split(', '),
                    [mat_type, mat_num, mat_default, mat_desc, mat_rows]))
+                #TODO: Use named tuples
 
         ## Convert to DataFrame
-        matrix = Matrix()
-        for fn in data:
-            for matn in data[fn]:
-                mat_data = data[fn][matn]
+        data_df = {}
+        for matn in data:
+            mat_data = data[matn]
 
-                #convert rows into df, setting column names and index
-                df_cols = EMMErecord_cols[mat_data['mat_type']]
-                df_idx_cols = df_cols[:-1]
-                df_data_cols = df_cols[-1]
+            #convert rows into df, setting column names and index
+            df_cols = EMMErecord_cols[mat_data['mat_type']]
+            df_idx_cols = df_cols[:-1]
+            df_data_col = df_cols[-1]
 
-                mat = Matrix.from_records(mat_data['mat_rows'],
-                                               columns=df_cols,
-                                               index=df_idx_cols)
+            #this avoids repeating names:
+            mat_id = '{}{}'.format(matn, df_data_col)
+            df_cols = df_idx_cols + [mat_id]
 
-                #this avoids repeating names:
-                mat_id = '{}{}'.format(fn, df_data_cols)
-                #numeric is needed for Matrix methods to work as expected
-                matrix[mat_id] = pd.to_numeric(mat[df_data_cols])           
+            mat = Matrix.from_records(mat_data['mat_rows'],
+                                           columns=df_cols,
+                                           index=df_idx_cols)
+
+            data_df[mat_id] = mat
+
+        #numeric is needed for Matrix methods to work as expected
+        #matrix[mat_id] = pd.to_numeric(mat[df_data_cols])
+
+        matrix = pd.concat(data_df.values(), axis=1)
+
 
         return matrix
 
