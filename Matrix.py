@@ -219,6 +219,7 @@ class Matrix(pd.DataFrame):
             # Using weights
             # 0) Deal with 0 trips in wght file:
             #wght = weights.where(weights > min_val, min_val) #DEBUG
+            wght = weights
             # Is this necessary?
 
             # 1) Multiply src_file by wght_file
