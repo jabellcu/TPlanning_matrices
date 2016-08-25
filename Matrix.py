@@ -163,9 +163,6 @@ class Matrix(pd.DataFrame):
                 outputs matrices.
             '''
         
-        #Deal with 0 values in mapping: NOT IN USE
-        #mapping = mapping.where(mapping>min_val, min_val) #DEBUG
-
         if weights is None:
             if mapping_split_cols:
                 
@@ -218,14 +215,10 @@ class Matrix(pd.DataFrame):
         else:
             # Using weights
             # 0) Deal with 0 trips in wght file:
-            #wght = weights.where(weights > min_val, min_val) #DEBUG
-            wght = weights
-            # Is this necessary?
+            wght = weights.where(weights > min_val, min_val)
 
             # 1) Multiply src_file by wght_file
             wmat = self.mul(wght, fill_value=0)
-            # Deal with 0 values in input matrix: NOT IN USE
-            #wmat = self.where(self > min_val, min_val).mul(wght, fill_value=0) #DEBUG
 
             # 2) Disaggregate src x wght as if it was a demand matrix
             rezoned_wmat = wmat.rezone(mapping,
