@@ -121,6 +121,20 @@ class Matrix(pd.DataFrame):
     def from_panel(panel):
         ...
 
+    def flatten_cols(self, sep='_', strip=True, inplace=True):
+        '''Turns a MultiIndex-column dataframe into a simple-column dataframe.'''
+        if strip:
+            cols = [sep.join(col_vals).strip() for col_vals in self.columns.values]
+        else:
+            cols = [sep.join(col_vals) for col_vals in self.columns.values]
+        
+        if inplace:
+            self.columns = cols
+        else:
+            newdf = self.copy()
+            newdf.columns = cols
+            return newdf
+
     def complete(self, zones, names=['O', 'D'], fill_value=0):
         '''Completes the matrix index with specified zones. Ignores existing zones.'''
         if isinstance(zones, pd.MultiIndex):
