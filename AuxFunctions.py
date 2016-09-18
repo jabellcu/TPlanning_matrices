@@ -344,3 +344,7 @@ def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}',
     if output_regresion_stats:
         regression_stats.to_csv(oFileNamePattern.replace('{}', 'regression_stats') + '.csv')
     return regression_stats
+
+def allequal(iterator):
+    '''Returns True if all elements of iterator are identical'''
+    return len(set(iterator)) <= 1

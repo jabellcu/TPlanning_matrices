@@ -21,7 +21,7 @@ from Matrix import Matrix
 from AuxFunctions import *
 
 
-# In[ ]:
+# In[4]:
 
 class TLD(pd.DataFrame):
     '''A Trip-length distribution DataFrame. Distance is index.
@@ -51,7 +51,7 @@ class TLD(pd.DataFrame):
                 This function cannot be used to disaggregate a TLD'''.format(n, current_bands)
             raise ValueError(ErrMsg)
         
-        TLDn = self.groupby(nband(n)).sum() #TLD by bands
+        TLDn = self.groupby(TLD.nband(n)).sum() #TLD by bands
         TLDn.index = TLDn.index + n #re-index to top end of each band
         TLDn.at[0,:]=0 #TLD with initial zero value
         return TLDn.sort_index()
@@ -105,6 +105,7 @@ class TLD(pd.DataFrame):
         of the TLD columns. TLD should contain totals, not proportions.'''
         return self.apply(lambda x: (x * self.index.get_level_values(level)).sum())
     
+    ##TODO: Add an option to dropna of fillna
     @staticmethod
     def from_dist_col(mat, dist_col=-1, dist_band=1, normalized=False):
         '''Returns the Trip-Lenght Distribution of mat, 
@@ -114,7 +115,7 @@ class TLD(pd.DataFrame):
             dist_col = mat.columns[dist_col]
 
         tld = mat.copy()
-        tld.ix[:,dist_col] = tld.ix[:,dist_col].apply(nband(dist_band))
+        tld.ix[:,dist_col] = tld.ix[:,dist_col].apply(TLD.nband(dist_band))
 
         tld = tld.groupby(by=dist_col).sum()
         tld.index = tld.index + dist_band #top end of each band
@@ -135,7 +136,6 @@ class TLD(pd.DataFrame):
         based on distance (dist_col) form dist, aggregated by dist_band.
         mat can have any number of culumns, but only dist_col will be used
         for the TLD. dist_col admits integer and column name.'''
-        #TODO: implement normalized
 
         if isinstance(dist_col, int):
             dist_col = dist.columns[dist_col]
@@ -151,19 +151,21 @@ class TLD(pd.DataFrame):
         return tld
     
     @staticmethod
-    def from_mat_multi(mat, dist, dist_band, normalized=False):
+    def from_mat(mat, dist, dist_band=1, normalized=False):
         '''Returns the Trip-Length Distribution of mat.
         TLD for each mat column will be based on the corresponding
         column from dist (in order). mat and dist must have the same
         number of columns, or just the first distance column will be
         used.'''
-        #TODO: implement normalized
 
         if len(mat.columns) != len(dist.columns):
-            return TLD_single(mat, dist, dist_band)
+            return TLD.from_mat_single(mat, dist, dist_band=dist_band, normalized=normalized)
 
         dfs = zip_df_cols([mat,dist])
-        TLDs = [TLD.from_dist_col(df, dist_band, 1) for df in dfs]
+        TLDs = [TLD.from_dist_col(df, dist_col=1,
+                                    dist_band=dist_band,
+                                    normalized=normalized)
+                for df in dfs]
 
         tld = pd.DataFrame()
         for xtld in TLDs:
@@ -265,9 +267,9 @@ class TLD(pd.DataFrame):
             col_label = 'Avg Dist'
 
         table = plt.table(
-            cellText=[['{:,.2f}'.format(avgdist(TLD,col))] for col in TLD],
+            cellText=[['{:,.2f}'.format(col)] for col in self.avgdist],
             colWidths = [0.1],
-            rowLabels=[' {} '.format(col) for col in TLD],
+            rowLabels=[' {} '.format(col) for col in self],
             colLabels=[col_label],
             loc='upper right')
         #table.set_fontsize(16)
@@ -288,7 +290,7 @@ class TLD(pd.DataFrame):
         Includes average distance.'''
         for col in self:
             oFname = oFileNamePattern.format(col)
-            TLD.to_JPG(TLD[[col]], oFname, *args, **kwargs)
+            self.to_JPG(self[[col]], oFname, *args, **kwargs)
             
     #TODO: output average distances as DataFrame (and export as csv?)
     @staticmethod
@@ -297,136 +299,9 @@ class TLD(pd.DataFrame):
         Columns are taken pairwise, in positional order.
         Names based on column names.'''
         comparisonTLDs = zip_df_cols(TLDs)
-        for TLD in comparisonTLDs:
-            TLDname = '-'.join(TLD.columns)
-            OutputName = oFileNamePattern.format(TLDname)
-            TLD_to_JPG(TLD, OutputName, *args, **kwargs)
+        for tld in comparisonTLDs:
+            tldn = '-'.join(tld.columns)
+            OutputName = oFileNamePattern.format(tldn)
+            TLD_to_JPG(tld, OutputName, *args, **kwargs)
 
-
-# In[1]:
-
-## TODO: Re test below using the new class
-
-
-# In[21]:
-
-ex_matrixf = os.path.join('example_data', 'ex_matrix_1.csv')
-ex_matrix = Matrix(pd.DataFrame.from_csv(ex_matrixf, index_col=[0,1]))
-ex_matrix
-
-
-# In[22]:
-
-ex_skimdistf = os.path.join('example_data', 'ex_skimdist_1.csv')
-ex_skimdist = Matrix(pd.DataFrame.from_csv(ex_skimdistf, index_col=[0,1]))
-ex_skimdist
-
-
-# In[23]:
-
-ex_TLD = TLD_SingleDist(ex_matrix, ex_skimdist, 5)
-ex_TLD
-
-
-# In[24]:
-
-ex_TLD.sum()
-
-
-# In[25]:
-
-from MatrixExamples import mat
-
-
-# In[26]:
-
-mat
-
-
-# In[27]:
-
-dst = mat.copy()
-dst['T1'] = (dst.index.get_level_values(0)**2 - dst.index.get_level_values(1)**2)**2
-dst['T2'] = dst['T1'] / dst.index.get_level_values(0)
-dst['T2'] = dst['T1'] / dst.index.get_level_values(1)
-dst.columns = 'D1 D2 D3'.split()
-dst
-
-
-# In[28]:
-
-TLD_single = TLD_SingleDist(mat,dst,5)
-TLD_single
-
-
-# In[29]:
-
-TLD_multi = TLD_MultiDist(mat,dst,5)
-TLD_multi
-
-
-# In[30]:
-
-mat.sum()
-
-
-# In[31]:
-
-TLD_single.sum()
-
-
-# In[32]:
-
-TLD_multi.sum()
-
-
-# In[33]:
-
-normalize_TLD(TLD_multi).sum()
-
-
-# In[34]:
-
-band_agg_TLD(TLD_multi, 10).sum()
-
-
-# In[35]:
-
-OutputName = os.path.join('example_outputs', 'TLD.png')
-TLD_to_JPG(TLD_multi, OutputName=OutputName)
-
-
-# In[36]:
-
-oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
-TLD_cols_to_JPGs(TLD_multi, oFileNamePattern=oFileNamePattern)
-
-
-# In[37]:
-
-TLD1 = TLD_multi.copy()
-TLD2 = TLD_multi.copy() + 3
-TLD3 = TLD_multi.copy()
-TLD3 = TLD3.apply(lambda x: x + TLD3.index.get_level_values(0))
-TLDs = [TLD1, TLD2, TLD3]
-i = 1
-for TLD in TLDs:
-    TLD.columns = ['mat{}_{}'.format(i,col) for col in TLD]
-    i+=1
-
-
-# In[38]:
-
-oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
-TLD_comparison_to_JPGs(TLDs, oFileNamePattern=oFileNamePattern)
-
-
-# In[39]:
-
-TLD_multi
-
-
-# In[65]:
-
-mid_interval_TLD(TLD_multi)
 
