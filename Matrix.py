@@ -254,17 +254,11 @@ class Matrix(pd.DataFrame):
 
             return rezoned_weighted_mat
 
-    #TODO
-    def fill_intrazonals(self, using=0, dist=None):
-        '''Infill diagonal of the matrix with values from func, and
-        dist'''
-        
-        if callable(using):
-            raise NotImplementedError
-
-        else:
-            indexer = [allequal(vals) for vals in self.index.values]
-            self.loc[indexer] = using
+    def fill_intrazonals(self, using=0, inplace=True):
+        '''Infill diagonal of the matrix. 'using' can be a value or an array
+        with the same dimensions as the intrazonals to infill.'''
+        indexer = [allequal(vals) for vals in self.index.values]
+        self.loc[indexer] = using
 
     #TODO: implement max_iter by time rather than iterations
     #TODO: break if trip ends are the same in two consecutive iterations
