@@ -121,7 +121,7 @@ def truncate_TLD(TLD, dist):
 def avgdist(TLD,col,level=-1):
     '''Returns the average distance (weighted average, SUMPRODUCT)
     of specified column in TLD. TLD should contain totals, not proportions.'''
-    return (TLD[col] * TLD.index.get_level_values(-1)).sum()
+    return (TLD[col] * TLD.index.get_level_values(level)).sum()
 
 
 # In[13]:
