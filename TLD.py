@@ -53,12 +53,49 @@ class TLD(pd.DataFrame):
             df.at[0,:]=0
             return df
 
-    def band_agg(self, n, current_bands=0):
-        '''Aggregates to bands of n.
-        current_bands - length of the interval. 0 to estimate it.'''
+    def upper_band(self, current_bands=0, inplace=True):
+        '''Returns TLD using the upper band of the distance ranges in the
+        index.
+        current_bands - length of the current interval. 0 to estimate it.'''
 
         if not current_bands:
-            current_bands = self.index.get_level_values(-1)[1]
+            current_bands = (self.index.get_level_values(-1)[1]
+                            -self.index.get_level_values(-1)[0])
+
+        newidx = self.index + current_bands #re-index to lower end of each band
+
+        if inplace:
+            self.index = newidx
+        else:
+            tld = sef.copy()
+            tld.index = newidx
+            return tld
+
+    def lower_band(self, current_bands=0, inplace=True):
+        '''Returns TLD using the lower band of the distance ranges in the
+        index.
+        current_bands - length of the current interval. 0 to estimate it.'''
+
+        if not current_bands:
+            current_bands = (self.index.get_level_values(-1)[1]
+                            -self.index.get_level_values(-1)[0])
+
+        newidx = self.index - current_bands #re-index to lower end of each band
+
+        if inplace:
+            self.index = newidx
+        else:
+            tld = sef.copy()
+            tld.index = newidx
+            return tld
+
+    def band_agg(self, n, current_bands=0, upper_band=True, set_zero=False):
+        '''Aggregates to bands of n.
+        current_bands - length of the current interval. 0 to estimate it.'''
+
+        if not current_bands:
+            current_bands = (self.index.get_level_values(-1)[1]
+                            -self.index.get_level_values(-1)[0])
 
         if n < current_bands:
             ErrMsg = '''input n ({}) < TLD band aggregation ({})
@@ -67,8 +104,10 @@ class TLD(pd.DataFrame):
 
         TLDn = self.groupby(TLD.nband(n)).sum() #TLD by bands
         TLDn = TLD(TLDn) #Groupby does not preserve TLD subclass
-        TLDn.index = TLDn.index + n #re-index to top end of each band
-        TLDn.set_zero()
+        if upper_band:
+            TLDn = TLDn.upper_band()
+        if set_zero:
+            TLDn.set_zero()
         return TLDn.sort_index()
 
     @property
@@ -77,6 +116,7 @@ class TLD(pd.DataFrame):
         for each distance band rather than absolute number of trips.'''
         return self.apply(lambda x: x / x.sum())
 
+    ##TODO: Fails when applied repeatedly
     def mid_band(self, level=0, factor=0.5, current_bands=0, inplace=False):
         '''Re-index to the medium point of the interval.
         level         - index level to use
