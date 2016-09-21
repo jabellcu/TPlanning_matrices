@@ -8,7 +8,6 @@ from scipy import stats
 import re
 import os
 
-#TODO: Check if these are circular references :-/
 from AuxFunctions import *
 
 def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
@@ -261,7 +260,6 @@ class Matrix(pd.DataFrame):
         self.loc[indexer] = using
 
     #TODO: implement max_iter by time rather than iterations
-    #TODO: break if trip ends are the same in two consecutive iterations
     def furness(self, TO, TD, tolerance=0.001, max_iter=100):
         '''Use FRATAR algorithm to adjust (balance) the matrix
         to target origins and destinations (TO, TD), within a certain tolerance.

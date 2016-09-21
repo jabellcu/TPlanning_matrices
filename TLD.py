@@ -26,12 +26,12 @@ from AuxFunctions import *
 class TLD(pd.DataFrame):
     '''A Trip-length distribution DataFrame. Distance is index.
     Columns for time periods, segments, vehicles, etc.'''
-    
+
     @property
     def _constructor(self):
         '''TLD operations return TLD objects.'''
         return TLD
-    
+
     @staticmethod
     def nband(n):
         '''
@@ -43,7 +43,7 @@ class TLD(pd.DataFrame):
         [0, 0, 2, 2, 4, 4, 6]
         '''
         return lambda x: int(x/n)*n
-    
+
     def set_zero(self, inplace=True):
         '''Add initial zero value'''
         if inplace:
@@ -56,37 +56,33 @@ class TLD(pd.DataFrame):
     def band_agg(self, n, current_bands=0):
         '''Aggregates to bands of n.
         current_bands - length of the interval. 0 to estimate it.'''
-        
+
         if not current_bands:
             current_bands = self.index.get_level_values(-1)[1]
-        
+
         if n < current_bands:
             ErrMsg = '''input n ({}) < TLD band aggregation ({})
                 This function cannot be used to disaggregate a TLD'''.format(n, current_bands)
             raise ValueError(ErrMsg)
-        
+
         TLDn = self.groupby(TLD.nband(n)).sum() #TLD by bands
         TLDn = TLD(TLDn) #Groupby does not preserve TLD subclass
         TLDn.index = TLDn.index + n #re-index to top end of each band
         TLDn.set_zero()
         return TLDn.sort_index()
-    
-    #TODO: Should this return a copy?
-    def normalize(self):
-        '''Normalizes TLD so TLD will contain proportion of trips 
-        for each distance band rather thab absolute number of trips.'''
-        return self.apply(lambda x: x / x.sum())
-    
+
     @property
     def norm(self):
-        return self.normalize()
-    
+        '''Retyurns normalized TLD so TLD will contain proportion of trips 
+        for each distance band rather than absolute number of trips.'''
+        return self.apply(lambda x: x / x.sum())
+
     def mid_band(self, level=0, factor=0.5, current_bands=0, inplace=False):
         '''Re-index to the medium point of the interval.
         level         - index level to use
         factor        - factor to apply to the interval
         current_bands - length of the interval. 0 to estimate it.'''
-        
+
         if inplace:
             df = self
         else:
@@ -100,33 +96,33 @@ class TLD(pd.DataFrame):
             current_bands = min(idx_increments)
 
         reidx = idx + current_bands * factor
-        
+
         df.index = reidx
 
         if not inplace:
             return df
-        
+
     def trim_index(self, index_names_to_keep='from', inplace=False):
         '''Wrapper for trim_index_df, adapted for TLD.'''
         return trim_index_df(self, index_names_to_keep, inplace)
-    
+
     def to_numeric(self):
         '''Converts strings into numbers.'''
         tmp_index_names = self.index.names
         self.index = pd.to_numeric(TLD.index)
         self.index.names = tmp_index_names #I can't remmeber now why this is necessary
         return self.apply(lambda x: pd.to_numeric(x))
-    
+
     def truncate(self, dist):
         '''Truncates based on the index values.'''
         return self.loc[self.index < dist]
-    
+
     @property
     def avgdist(self, level=-1):
         '''Returns the average distances (weighted average, SUMPRODUCT)
         of the TLD columns. TLD should contain totals, not proportions.'''
         return self.apply(lambda x: (x * self.index.get_level_values(level)).sum())
-    
+
     ##TODO: Add an option to dropna of fillna
     @staticmethod
     def from_dist_col(mat, dist_col=-1, dist_band=1, normalized=False):
@@ -144,12 +140,12 @@ class TLD(pd.DataFrame):
         tld.at[0,:]=0 #fill initial zero value
 
         tld = tld.sort_index()
-        
+
         tld = TLD(tld)
-        
+
         if normalized:
             tld = tld.norm
-            
+
         return tld
 
     @staticmethod
@@ -164,14 +160,14 @@ class TLD(pd.DataFrame):
 
         df = mat.join(dist.ix[:,[dist_col]]).fillna(0)
         tld = TLD.from_dist_col(df, dist_col, dist_band)
-        
+
         tld = TLD(tld)
-        
+
         if normalized:
             tld = tld.norm
-        
+
         return tld
-    
+
     @staticmethod
     def from_mat(mat, dist, dist_band=1, normalized=False):
         '''Returns the Trip-Length Distribution of mat.
@@ -194,12 +190,12 @@ class TLD(pd.DataFrame):
             tld = pd.concat([tld, xtld], axis=1)
 
         tld = TLD(tld)
-        
+
         if normalized:
             tld = tld.norm 
 
         return tld
-    
+
     @staticmethod
     def read_EMME_TLD(file):
         '''Returns TLD df from an EMME TLD report file, with columns:
@@ -227,7 +223,7 @@ class TLD(pd.DataFrame):
                                        columns=EMME_TLD_cols,
                                        index=idx_cols)
         return df
-    
+
     @staticmethod
     def read_EMME_TLDs(files):
         '''Reads all TLD reports specified in files
@@ -245,7 +241,7 @@ class TLD(pd.DataFrame):
         density_abs, density_norm, cumulative_abs, cumulative_norm = combinedTLDs
 
         return density_abs, density_norm, cumulative_abs, cumulative_norm
-    
+
     #TODO: Set xmax, ymax for x and y axes
     def to_JPG(self, OutputName='TLD.png', title='Trip-Length Distribution',
                    ylabel='Trips', units='',
@@ -305,7 +301,7 @@ class TLD(pd.DataFrame):
         oName = OutputName
         plt.savefig(oName, bbox_inches='tight')
         plt.close()
-        
+
     def cols_to_JPGs(self, oFileNamePattern='TLD_{}.png', *args, **kwargs):
         '''Produces a graph for each column of TLD.
         Names based on oFileNamePattern and column names.
@@ -313,7 +309,7 @@ class TLD(pd.DataFrame):
         for col in self:
             oFname = oFileNamePattern.format(col)
             self[[col]].to_JPG(oFname, *args, **kwargs)
-            
+
     #TODO: output average distances as DataFrame (and export as csv?)
     @staticmethod
     def comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', *args, **kwargs):
