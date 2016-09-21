@@ -27,6 +27,11 @@ class TLD(pd.DataFrame):
     '''A Trip-length distribution DataFrame. Distance is index.
     Columns for time periods, segments, vehicles, etc.'''
     
+    @property
+    def _constructor(self):
+        '''TLD operations return TLD objects.'''
+        return TLD
+    
     @staticmethod
     def nband(n):
         '''
@@ -38,6 +43,15 @@ class TLD(pd.DataFrame):
         [0, 0, 2, 2, 4, 4, 6]
         '''
         return lambda x: int(x/n)*n
+    
+    def set_zero(self, inplace=True):
+        '''Add initial zero value'''
+        if inplace:
+            self.at[0,:]=0
+        else:
+            df = self.copy()
+            df.at[0,:]=0
+            return df
 
     def band_agg(self, n, current_bands=0):
         '''Aggregates to bands of n.
@@ -52,8 +66,9 @@ class TLD(pd.DataFrame):
             raise ValueError(ErrMsg)
         
         TLDn = self.groupby(TLD.nband(n)).sum() #TLD by bands
+        TLDn = TLD(TLDn) #Groupby does not preserve TLD subclass
         TLDn.index = TLDn.index + n #re-index to top end of each band
-        TLDn.at[0,:]=0 #TLD with initial zero value
+        TLDn.set_zero()
         return TLDn.sort_index()
     
     #TODO: Should this return a copy?
@@ -62,18 +77,22 @@ class TLD(pd.DataFrame):
         for each distance band rather thab absolute number of trips.'''
         return self.apply(lambda x: x / x.sum())
     
-    #TODO: test this
     @property
     def norm(self):
         return self.normalize()
     
-    def mid_band(self, level=0, factor=0.5, current_bands=0):
+    def mid_band(self, level=0, factor=0.5, current_bands=0, inplace=False):
         '''Re-index to the medium point of the interval.
         level         - index level to use
         factor        - factor to apply to the interval
         current_bands - length of the interval. 0 to estimate it.'''
         
-        idx = self.index
+        if inplace:
+            df = self
+        else:
+            df = self.copy()
+
+        idx = df.index
 
         if not current_bands:
             idx_increments = idx.get_level_values(level) - pd.Series(idx.get_level_values(level)).shift()
@@ -82,7 +101,10 @@ class TLD(pd.DataFrame):
 
         reidx = idx + current_bands * factor
         
-        self.index = reidx
+        df.index = reidx
+
+        if not inplace:
+            return df
         
     def trim_index(self, index_names_to_keep='from', inplace=False):
         '''Wrapper for trim_index_df, adapted for TLD.'''
@@ -266,8 +288,9 @@ class TLD(pd.DataFrame):
         else:
             col_label = 'Avg Dist'
 
+        ##TODO: DEBUG THIS
         table = plt.table(
-            cellText=[['{:,.2f}'.format(col)] for col in self.avgdist],
+            cellText=[['{:,.2f}'.format(dist)] for dist in list(self.avgdist)],
             colWidths = [0.1],
             rowLabels=[' {} '.format(col) for col in self],
             colLabels=[col_label],
@@ -284,13 +307,13 @@ class TLD(pd.DataFrame):
         plt.savefig(oName, bbox_inches='tight')
         plt.close()
         
-    def TLD_cols_to_JPGs(self, oFileNamePattern='TLD_{}.png', *args, **kwargs):
+    def cols_to_JPGs(self, oFileNamePattern='TLD_{}.png', *args, **kwargs):
         '''Produces a graph for each column of TLD.
         Names based on oFileNamePattern and column names.
         Includes average distance.'''
         for col in self:
             oFname = oFileNamePattern.format(col)
-            self.to_JPG(self[[col]], oFname, *args, **kwargs)
+            self[[col]].to_JPG(oFname, *args, **kwargs)
             
     #TODO: output average distances as DataFrame (and export as csv?)
     @staticmethod
@@ -298,10 +321,139 @@ class TLD(pd.DataFrame):
         '''Produces comparison graphs of the columns in each TLD in TLDs list.
         Columns are taken pairwise, in positional order.
         Names based on column names.'''
-        comparisonTLDs = zip_df_cols(TLDs)
+        comparisonTLDs = [TLD(df) for df in zip_df_cols(TLDs)]
+        #zip_df_cols produces DataFrames, not TLDs
         for tld in comparisonTLDs:
             tldn = '-'.join(tld.columns)
             OutputName = oFileNamePattern.format(tldn)
-            TLD_to_JPG(tld, OutputName, *args, **kwargs)
+            TLD.to_JPG(tld, OutputName, *args, **kwargs)
 
+
+# In[5]:
+
+ex_matrixf = os.path.join('example_data', 'ex_matrix_1.csv')
+ex_matrix = Matrix(pd.DataFrame.from_csv(ex_matrixf, index_col=[0,1]))
+ex_matrix
+
+
+# In[6]:
+
+ex_skimdistf = os.path.join('example_data', 'ex_skimdist_1.csv')
+ex_skimdist = Matrix(pd.DataFrame.from_csv(ex_skimdistf, index_col=[0,1]))
+ex_skimdist
+
+
+# In[7]:
+
+## Fill intrazonals
+ex_skimdist = ex_skimdist.complete(ex_matrix.index)
+
+
+# In[8]:
+
+ex_TLD = TLD.from_mat(ex_matrix, ex_skimdist, 5)
+ex_TLD
+
+
+# In[9]:
+
+ex_TLD.sum()
+
+
+# In[10]:
+
+from MatrixExamples import mat7
+
+
+# In[11]:
+
+mat7
+
+
+# In[12]:
+
+dst = mat7.copy()
+dst['T1'] = (dst.index.get_level_values(0)**2 - dst.index.get_level_values(1)**2)**2
+dst['T2'] = dst['T1'] / dst.index.get_level_values(0)
+dst['T2'] = dst['T1'] / dst.index.get_level_values(1)
+dst.columns = 'D1 D2 D3'.split()
+dst
+
+
+# In[13]:
+
+TLD_single = TLD.from_mat_single(mat7,dst,dist_band=5)
+TLD_single
+
+
+# In[14]:
+
+TLD_multi = TLD.from_mat(mat7,dst,dist_band=5)
+TLD_multi
+
+
+# In[15]:
+
+mat7.sum()
+
+
+# In[16]:
+
+TLD_single.sum()
+
+
+# In[17]:
+
+TLD_multi.sum()
+
+
+# In[18]:
+
+TLD_multi.norm.sum()
+
+
+# In[19]:
+
+TLD_multi.band_agg(10).sum()
+
+
+# In[20]:
+
+OutputName = os.path.join('example_outputs', 'TLD.png')
+TLD_multi.to_JPG(OutputName=OutputName)
+
+
+# In[21]:
+
+oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
+TLD_multi.cols_to_JPGs(oFileNamePattern=oFileNamePattern)
+
+
+# In[22]:
+
+TLD1 = TLD_multi.copy()
+TLD2 = TLD_multi.copy() + 3
+TLD3 = TLD_multi.copy()
+TLD3 = TLD3.apply(lambda x: x + TLD3.index.get_level_values(0))
+TLDs = [TLD1, TLD2, TLD3]
+i = 1
+for tld in TLDs:
+    tld.columns = ['mat{}_{}'.format(i,col) for col in tld]
+    i+=1
+
+
+# In[23]:
+
+oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
+TLD.comparison_to_JPGs(TLDs, oFileNamePattern=oFileNamePattern)
+
+
+# In[24]:
+
+TLD_multi
+
+
+# In[25]:
+
+TLD_multi.mid_band()
 

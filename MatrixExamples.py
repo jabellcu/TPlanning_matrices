@@ -209,16 +209,22 @@ ex_skimdist
 
 # In[31]:
 
-ex_TLD = TLD_SingleDist(ex_matrix, ex_skimdist, 5)
-ex_TLD
+## Fill intrazonals
+ex_skimdist = ex_skimdist.complete(ex_matrix.index)
 
 
 # In[32]:
 
-ex_TLD.sum()
+ex_TLD = TLD.from_mat(ex_matrix, ex_skimdist, 5)
+ex_TLD
 
 
 # In[33]:
+
+ex_TLD.sum()
+
+
+# In[34]:
 
 dst = mat7.copy()
 dst['T1'] = (dst.index.get_level_values(0)**2 - dst.index.get_level_values(1)**2)**2
@@ -228,56 +234,56 @@ dst.columns = 'D1 D2 D3'.split()
 dst
 
 
-# In[34]:
-
-TLD_single = TLD_SingleDist(mat7,dst,5)
-TLD_single
-
-
 # In[35]:
 
-TLD_multi = TLD_MultiDist(mat7,dst,5)
-TLD_multi
+TLD_single = TLD.from_mat_single(mat7,dst,dist_band=5)
+TLD_single
 
 
 # In[36]:
 
-mat7.sum()
+TLD_multi = TLD.from_mat(mat7,dst,dist_band=5)
+TLD_multi
 
 
 # In[37]:
 
-TLD_single.sum()
+mat7.sum()
 
 
 # In[38]:
 
-TLD_multi.sum()
+TLD_single.sum()
 
 
 # In[39]:
 
-normalize_TLD(TLD_multi).sum()
+TLD_multi.sum()
 
 
 # In[40]:
 
-band_agg_TLD(TLD_multi, 10).sum()
+TLD_multi.norm.sum()
 
 
 # In[41]:
 
-OutputName = os.path.join('example_outputs', 'TLD.png')
-TLD_to_JPG(TLD_multi, OutputName=OutputName)
+TLD_multi.band_agg(10).sum()
 
 
 # In[42]:
 
-oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
-TLD_cols_to_JPGs(TLD_multi, oFileNamePattern=oFileNamePattern)
+OutputName = os.path.join('.', 'example_outputs', 'TLD.png')
+TLD_multi.to_JPG(OutputName)
 
 
 # In[43]:
+
+oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
+TLD_multi.cols_to_JPGs(oFileNamePattern)
+
+
+# In[44]:
 
 TLD1 = TLD_multi.copy()
 TLD2 = TLD_multi.copy() + 3
@@ -290,80 +296,78 @@ for TLD in TLDs:
     i+=1
 
 
-# In[44]:
-
-oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
-TLD_comparison_to_JPGs(TLDs, oFileNamePattern=oFileNamePattern)
-
-
 # In[45]:
 
+oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
+TLD.comparison_to_JPGs(TLDs, oFileNamePattern=oFileNamePattern)
+
+
+# In[46]:
+
 oFileNamePattern = os.path.join('example_outputs', 'ex_TLD_{}.png')
-TLD_cols_to_JPGs(ex_TLD, oFileNamePattern)
+ex_TLD.cols_to_JPGs(oFileNamePattern)
 
 
 # # TE comparison
 
-# In[46]:
+# In[47]:
 
 oFileNamePattern = os.path.join('example_outputs', '{}')
 TE_comparison_to_JPGs(mat7,fmat7, oFileNamePattern=oFileNamePattern, prefixes='mat_ fmat7_'.split())
 
 
-# In[47]:
+# In[48]:
 
 TE_RegressionStats(mat7,fmat7, prefixes='mat_ fmat7_'.split())
 
 
 # # Gravity
 
-# In[48]:
+# In[49]:
 
 TLD_multi_for_ParamEst = TLD_multi.loc[1:,:]
-TLD_multi_for_ParamEst = mid_interval_TLD(TLD_multi_for_ParamEst, factor=-0.5)
-TLD_multi_for_ParamEst = normalize_TLD(TLD_multi_for_ParamEst)
+TLD_multi_for_ParamEst = TLD_multi_for_ParamEst.mid_band(factor=-0.5)
+TLD_multi_for_ParamEst = TLD_multi_for_ParamEst.norm
 TLD_multi_for_ParamEst
 
 
-# In[49]:
+# In[50]:
 
 #lognorm gamma exponnorm exponpow tanner
 dists = fit_distribs(TLD_multi_for_ParamEst, 'lognorm exponnorm exponpow'.split())
 dists
 
 
-# In[50]:
+# In[51]:
 
 tTO = randomizeTE(mat7.TO)
 tTD = randomizeTE(mat7.TO)
 tTO
 
 
-# In[51]:
+# In[52]:
 
 syn7 = mat7.ApplyGravityModel(tTO, tTD, dists, furness=False)
 syn7
 
 
-# In[52]:
+# In[53]:
 
 syn7.columns.get_level_values(0)
 
 
-# In[53]:
+# ##TODO: Debug
+# syn7.loc[:,:] = 1
+# syn7.furness(tTO, tTD)
 
-syn7.loc[:,:] = 1
-syn7.furness(tTO, tTD)
-
-
-# In[ ]:
+# In[55]:
 
 cols = [(k, d.dist.name) for k,dlst in dists.items() for d in dlst]
 #cols
 pd.MultiIndex.from_tuples(cols)
 
 
-# In[ ]:
+# In[56]:
 
 df = pd.DataFrame(index=mat7.index, columns=pd.MultiIndex.from_tuples(cols))
 #df[(['foo', 'bar'])] = 1

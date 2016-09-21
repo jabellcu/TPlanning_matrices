@@ -44,7 +44,7 @@ class Matrix(pd.DataFrame):
 
     @property
     def _constructor(self):
-        '''Matrix operations returns Matrix objects.'''
+        '''Matrix operations return Matrix objects.'''
         return Matrix
 
     @property
