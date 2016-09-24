@@ -74,13 +74,11 @@ class Matrix(pd.DataFrame):
         # which is consistent with TO and TD usage.
         return self.TEs()
 
-    def TEs(self, index_name='zone', suffixes=['_TO', '_TD']):
+    def TEs(self, index_name='zone', names=['TO', 'TD']):
         '''Returns Trip Ends: both trip origins and trip destinations
-        in a single DataFrame. Allows customization of index name and suffixes,
-        as this can be useful in some cases.'''
-        TE = pd.merge(self.TO, self.TD, suffixes=suffixes,
-                     left_index=True, right_index=True)
-        TE.index.names = [index_name]
+        in a single DataFrame. Allows customization of index and column names.'''
+        TE = pd.concat([self.TO, self.TD], axis=1)
+        TE.columns = pd.MultiIndex.from_product([names, self.columns])
         return TE
 
     @property
