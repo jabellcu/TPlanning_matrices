@@ -142,6 +142,42 @@ def randomizeSeries(S, fraction):
 def randomizeTE(TE):
     return TE.apply(randomizeSeries, args=[10])
 
+def flatten_cols(df, sep='_', strip=True, inplace=True):
+    '''Turns a MultiIndex-column dataframe into a simple-column dataframe.'''
+
+    if not isinstance(df.columns, pd.MultiIndex):
+        raise ValueError("Columns are already flat")
+    
+    if strip:
+        cols = [sep.join(col_vals).strip() for col_vals in df.columns.values]
+    else:
+        cols = [sep.join(col_vals) for col_vals in df.columns.values]
+    
+    if inplace:
+        df.columns = cols
+    else:
+        newdf = df.copy()
+        newdf.columns = cols
+        return newdf
+
+def split_cols(df, sep='_', inplace=True):
+    '''Turns a simple-column dataframe into a MultiIndex-column by
+    splitting the labels'''
+
+    if isinstance(df.columns, pd.MultiIndex):
+        raise ValueError("Columns are already MultiIndex")
+    
+    tup = [c.split(sep) for c in df.columns.values]
+    newidx = pd.MultiIndex.from_tuples(tup)
+
+    if inplace:
+        df.columns = newidx
+    else:
+        newdf = df.copy()
+        newdf.columns = newidx
+        return newdf
+
+
 def zip_df_cols(dflist, default_col_index=None):
     '''generator yields dataframes formed of pair-wise concatenation of columns
     from each df in the input dataframe list.

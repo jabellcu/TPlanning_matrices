@@ -118,48 +118,13 @@ class Matrix(pd.DataFrame):
     def from_panel(panel):
         ...
 
-    def flatten_cols(self, sep='_', strip=True, inplace=True):
-        '''Turns a MultiIndex-column dataframe into a simple-column dataframe.'''
-
-        if not isinstance(self.columns, pd.MultiIndex):
-            raise ValueError("Columns are already flat")
-        
-        if strip:
-            cols = [sep.join(col_vals).strip() for col_vals in self.columns.values]
-        else:
-            cols = [sep.join(col_vals) for col_vals in self.columns.values]
-        
-        if inplace:
-            self.columns = cols
-        else:
-            newdf = self.copy()
-            newdf.columns = cols
-            return newdf
-
     @property
     def flat_cols(self):
-        return self.flatten_cols(inplace=False)
+        return flatten_cols(self, inplace=False)
 
-    def split_cols(self, sep='_', inplace=True):
-        '''Turns a simple-column dataframe into a MultiIndex-column by
-        splitting the labels'''
-
-        if isinstance(self.columns, pd.MultiIndex):
-            raise ValueError("Columns are already MultiIndex")
-        
-        tup = [c.split(sep) for c in self.columns.values]
-        newidx = pd.MultiIndex.from_tuples(tup)
-
-        if inplace:
-            self.columns = newidx
-        else:
-            mat = self.copy()
-            mat.columns = newidx
-            return mat
-    
     @property
     def unflat(self):
-        return self.split_cols(inplace=False)
+        return split_cols(self, inplace=False)
 
     def complete(self, zones, names=['O', 'D'], fill_value=0):
         '''Completes the matrix index with specified zones. Ignores existing zones.'''
@@ -257,9 +222,6 @@ class Matrix(pd.DataFrame):
             
             if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
                 print("WARNING: rezoned matrix does not preserve the matrix totals.")
-
-            if not all(self.column == rezoned.column):
-                print("WARNING: column names or labels have changed.")
 
             return rezoned
 
