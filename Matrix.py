@@ -258,6 +258,9 @@ class Matrix(pd.DataFrame):
             if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
                 print("WARNING: rezoned matrix does not preserve the matrix totals.")
 
+            if not all(self.column == rezoned.column):
+                print("WARNING: column names or labels have changed.")
+
             return rezoned
 
         else:
