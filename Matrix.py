@@ -120,6 +120,10 @@ class Matrix(pd.DataFrame):
 
     def flatten_cols(self, sep='_', strip=True, inplace=True):
         '''Turns a MultiIndex-column dataframe into a simple-column dataframe.'''
+
+        if not isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("Columns are already flat")
+        
         if strip:
             cols = [sep.join(col_vals).strip() for col_vals in self.columns.values]
         else:
@@ -131,6 +135,31 @@ class Matrix(pd.DataFrame):
             newdf = self.copy()
             newdf.columns = cols
             return newdf
+
+    @property
+    def flat_cols(self):
+        return self.flatten_cols(inplace=False)
+
+    def split_cols(self, sep='_', inplace=True):
+        '''Turns a simple-column dataframe into a MultiIndex-column by
+        splitting the labels'''
+
+        if isinstance(self.columns, pd.MultiIndex):
+            raise ValueError("Columns are already MultiIndex")
+        
+        tup = [c.split(sep) for c in self.columns.values]
+        newidx = pd.MultiIndex.from_tuples(tup)
+
+        if inplace:
+            self.columns = newidx
+        else:
+            mat = self.copy()
+            mat.columns = newidx
+            return mat
+    
+    @property
+    def unflat(self):
+        return self.split_cols(inplace=False)
 
     def complete(self, zones, names=['O', 'D'], fill_value=0):
         '''Completes the matrix index with specified zones. Ignores existing zones.'''
@@ -174,6 +203,11 @@ class Matrix(pd.DataFrame):
                 outputs matrices.
             '''
         
+        if isinstance(self.columns, pd.MultiIndex):
+            mat = self.copy().flat_cols
+        else:
+            mat = self.copy()
+
         if weights is None:
             if mapping_split_cols:
                 
@@ -196,32 +230,35 @@ class Matrix(pd.DataFrame):
                 Omap = mapping.reset_index()[mapping_cols]
                 Dmap = Omap
             
-            suffixes = ['_' + n for n in self.index.names]
-            mat = pd.merge(self.reset_index(), Omap.reset_index(),
-                          left_on=self.index.names[-2], right_on=mapping_cols[0])
-            mat = pd.merge(mat, Dmap.reset_index(),
-                          left_on=self.index.names[-1], right_on=mapping_cols[0],
+            suffixes = ['_' + n for n in mat.index.names]
+            rezoned = pd.merge(mat.reset_index(), Omap.reset_index(),
+                          left_on=mat.index.names[-2], right_on=mapping_cols[0])
+            rezoned = pd.merge(rezoned, Dmap.reset_index(),
+                          left_on=mat.index.names[-1], right_on=mapping_cols[0],
                           suffixes=suffixes)
             
             if mapping_split_cols:
                 if Owght == Dwght:
                     Owght, Dwght = ['{}{}'.format(Owght,s) for s in suffixes]
                     
-                for col in self:
-                    mat[col] = mat[col] * mat[Owght] * mat[Dwght]
+                for col in mat:
+                    rezoned[col] = rezoned[col] * rezoned[Owght] * rezoned[Dwght]
             
             NewODnames = ['{}{}'.format(mapping_cols[1],s) for s in suffixes]
             
-            aux_cols = list(set(mat.columns) - set(self.columns) - set(NewODnames))
-            mat = mat.drop(aux_cols, axis=1)
+            aux_cols = list(set(rezoned.columns) - set(mat.columns) - set(NewODnames))
+            rezoned = rezoned.drop(aux_cols, axis=1)
             
-            mat = mat.groupby(NewODnames).sum()
-            mat = Matrix(mat)
+            rezoned = rezoned.groupby(NewODnames).sum()
+            rezoned = Matrix(rezoned)
             
-            if not np.allclose(self.TOTALS, mat.TOTALS, rtol=tol, atol=tol):
+            if isinstance(self.columns, pd.MultiIndex):
+                rezoned.split_cols()
+            
+            if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
                 print("WARNING: rezoned matrix does not preserve the matrix totals.")
 
-            return mat
+            return rezoned
 
         else:
             # Using weights
