@@ -218,7 +218,7 @@ class Matrix(pd.DataFrame):
             rezoned = Matrix(rezoned)
             
             if isinstance(self.columns, pd.MultiIndex):
-                rezoned.split_cols()
+                rezoned = rezoned.unflat
             
             if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
                 print("WARNING: rezoned matrix does not preserve the matrix totals.")
@@ -352,7 +352,8 @@ class Matrix(pd.DataFrame):
         EMMErecord_cols = {
             'md': ['zone', '_TD'],
             'mo': ['zone', '_TO'],
-            'mf': ['O', 'D', '']
+            'mf': ['O', 'D', ''],
+            'ms': 'Num Name Value Desc'.split()
             } #TODO: remove difference by TO /TD / T ??
 
         ## RegEx to read EMME format:
@@ -375,13 +376,28 @@ class Matrix(pd.DataFrame):
             fcontent = f.read()
             #each source file might contain several matrices
             mat_blocks = mat_re.findall(fcontent)
-            for matb in mat_blocks:
-                mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data = matb
-                mat_rows = EMMErecord_re[mat_type].findall(mat_data)
-                data[mat_name] = dict(zip(
-                   'mat_type, mat_num, mat_default, mat_desc, mat_rows'.split(', '),
-                   [mat_type, mat_num, mat_default, mat_desc, mat_rows]))
-                #TODO: Use named tuples
+            
+            if mat_blocks:
+                #normal md/mo/mf matrices
+                for matb in mat_blocks:
+                    mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data = matb
+                    mat_rows = EMMErecord_re[mat_type].findall(mat_data)
+                    data[mat_name] = dict(zip(
+                       'mat_type, mat_num, mat_default, mat_desc, mat_rows'.split(', '),
+                       [mat_type, mat_num, mat_default, mat_desc, mat_rows]))
+                    #TODO: Use named tuples
+            else:
+                #single value ms matrices
+                mat_re = re.compile(r'a\s+ms(\d+)\s+(\w+?)\s+([-.0-9]+)\s+(.*)\n')
+                # re groups:
+                # mat_num, mat_name, mat_val, mat_desc
+                mat_rows = mat_re.findall(fcontent)
+                for row in mat_rows:
+                    mat_type = 'ms'
+                    mat_num, mat_name, mat_val, mat_desc = row
+                    data[mat_name] = dict(zip(
+                       'mat_type, mat_num, mat_name, mat_val, mat_desc'.split(', '),
+                       [mat_type, mat_num, mat_name, mat_val, mat_desc]))
 
         ## Convert to DataFrame
         data_df = {}
@@ -397,16 +413,24 @@ class Matrix(pd.DataFrame):
             mat_id = '{}{}'.format(matn, df_data_col)
             df_cols = df_idx_cols + [mat_id]
 
-            mat = Matrix.from_records(mat_data['mat_rows'],
-                                           columns=df_cols,
-                                           index=df_idx_cols)
+            if mat_blocks:
+                mat = Matrix.from_records(mat_data['mat_rows'],
+                                               columns=df_cols,
+                                               index=df_idx_cols)
+            else:
+                mat = pd.DataFrame.from_dict(mat_data, orient='index')
 
             data_df[mat_id] = mat
 
         matrix = pd.concat(data_df.values(), axis=1)
 
+        if mat_blocks:
+            matrix = matrix.apply(pd.to_numeric)
+        else:
+            matrix = matrix.T.set_index('mat_num')['mat_name mat_val mat_desc'.split()]
+
         #numeric is needed for Matrix methods to work as expected
-        return matrix.apply(pd.to_numeric)
+        return matrix
 
     def to_EMME(self, OutputName,
                 file_header='', mat_number_start=100, mat_comment='', 
