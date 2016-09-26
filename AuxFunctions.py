@@ -223,7 +223,7 @@ def df_difference(dfi, dff, percent=False):
 
 def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
                 xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=None,
-                prefixes='', suffixes='', **kwargs):
+                prefixes='', suffixes='', output_df=False, **kwargs):
     
     '''Produces scatterplot graphs of consecutive df columns.
         xaxis_eq_yaxis   - both x and y axis' maximum values are the same
@@ -282,6 +282,7 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
 
         #regression
         slope, intercept, r_val, p_val, slope_std_err = stats.linregress(df[colin], df[colfn])
+        r_val = r_val ** 2
         regression_formula = '$y={:.2f}*x{:+.2f}$\n$R^2: {:.3f}$'.format(
                                 slope, intercept, r_val)
 
@@ -308,6 +309,9 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
         oFileName = oFileNamePattern.format(ColPairName)
         plt.savefig(oFileName)
         plt.close()
+
+        if output_df:
+            df.to_csv(oFileName + '.csv')
 
 def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes='', **kwargs):
     '''Returns a dataframe with the regression stats of consecutive df columns.
@@ -337,6 +341,7 @@ def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes='', **kwargs):
         ColPairName = ' - '.join([colin, colfn])
         
         slope, intercept, r_val, p_val, slope_std_err = stats.linregress(df[colin], df[colfn])
+        r_val = r_val ** 2
         regression_df.loc[ColPairName] = [slope, intercept, r_val]
     
     return regression_df
@@ -361,6 +366,7 @@ def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}',
         
         regression_stats_dfs = []
         for df in tdfs:
+
             if output_scatterplots:
                 ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern, **kwargs)
             regression_stats_dfs.append(RegressionStats_ConsecutiveColPairs(df))
