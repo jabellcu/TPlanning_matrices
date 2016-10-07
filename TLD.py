@@ -149,7 +149,7 @@ class TLD(pd.DataFrame):
     def to_numeric(self):
         '''Converts strings into numbers.'''
         tmp_index_names = self.index.names
-        self.index = pd.to_numeric(TLD.index)
+        self.index = pd.to_numeric(self.index)
         self.index.names = tmp_index_names #I can't remmeber now why this is necessary
         return self.apply(lambda x: pd.to_numeric(x))
 
