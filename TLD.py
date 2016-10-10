@@ -283,9 +283,9 @@ class TLD(pd.DataFrame):
         return density_abs, density_norm, cumulative_abs, cumulative_norm
 
     #TODO: Set xmax, ymax for x and y axes
-    def to_JPG(self, OutputName='TLD.png', title='Trip-Length Distribution',
+    def to_PNG(self, OutputName='TLD.png', title='Trip-Length Distribution',
                    ylabel='Trips', units='',
-                   legend=False, table_font_colors=True,
+                   legend=False, table=False, table_font_colors=True,
                    prefixes='', suffixes='',
                    *args, **kwargs):
         '''Produces a graph from TLD, all columns together.
@@ -324,16 +324,17 @@ class TLD(pd.DataFrame):
         else:
             col_label = 'Avg Dist'
 
-        table = plt.table(
-            cellText=[['{:,.2f}'.format(dist)] for dist in list(self.avgdist)],
-            colWidths = [0.1],
-            rowLabels=[' {} '.format(col) for col in self],
-            colLabels=[col_label],
-            loc='upper right')
-        #table.set_fontsize(16)
-        table.scale(2, 2)
+        if table:
+            table = plt.table(
+                cellText=[['{:,.2f}'.format(dist)] for dist in list(self.avgdist)],
+                colWidths = [0.1],
+                rowLabels=[' {} '.format(col) for col in self],
+                colLabels=[col_label],
+                loc='upper right')
+            #table.set_fontsize(16)
+            table.scale(2, 2)
 
-        if table_font_colors:
+        if table and table_font_colors:
             for i in range(len(line_colors)):
                 #table.get_celld()[(i+1, -1)].set_edgecolor(line_colors[i])
                 table.get_celld()[(i+1, -1)].set_text_props(color=line_colors[i])
@@ -342,17 +343,17 @@ class TLD(pd.DataFrame):
         plt.savefig(oName, bbox_inches='tight')
         plt.close()
 
-    def cols_to_JPGs(self, oFileNamePattern='TLD_{}.png', *args, **kwargs):
+    def cols_to_PNGs(self, oFileNamePattern='TLD_{}.png', *args, **kwargs):
         '''Produces a graph for each column of TLD.
         Names based on oFileNamePattern and column names.
         Includes average distance.'''
         for col in self:
             oFname = oFileNamePattern.format(col)
-            self[[col]].to_JPG(oFname, *args, **kwargs)
+            self[[col]].to_PNG(oFname, *args, **kwargs)
 
     #TODO: output average distances as DataFrame (and export as csv?)
     @staticmethod
-    def comparison_to_JPGs(TLDs, oFileNamePattern='TLD_{}.png', *args, **kwargs):
+    def comparison_to_PNGs(TLDs, oFileNamePattern='TLD_{}.png', *args, **kwargs):
         '''Produces comparison graphs of the columns in each TLD in TLDs list.
         Columns are taken pairwise, in positional order.
         Names based on column names.'''
@@ -361,5 +362,5 @@ class TLD(pd.DataFrame):
         for tld in comparisonTLDs:
             tldn = '-'.join(tld.columns)
             OutputName = oFileNamePattern.format(tldn)
-            TLD.to_JPG(tld, OutputName, *args, **kwargs)
+            TLD.to_PNG(tld, OutputName, *args, **kwargs)
 
