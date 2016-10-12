@@ -67,7 +67,7 @@ class TLD(pd.DataFrame):
         if inplace:
             self.index = newidx
         else:
-            tld = sef.copy()
+            tld = self.copy()
             tld.index = newidx
             return tld
 
@@ -85,7 +85,7 @@ class TLD(pd.DataFrame):
         if inplace:
             self.index = newidx
         else:
-            tld = sef.copy()
+            tld = self.copy()
             tld.index = newidx
             return tld
 
