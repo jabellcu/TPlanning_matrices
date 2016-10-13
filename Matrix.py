@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import re
 import os
+from itertools import chain
 
 from AuxFunctions import *
 
@@ -36,6 +37,34 @@ def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
                          '\n"zones" must be a list or a list of lists')
     
     return idx
+
+def RemoveFromZoning(zoning, rem):
+    '''Returns zoning without the zones specified. 'rem' can be a list of zones
+    or a zoning system.'''
+
+    if isinstance(rem, list):
+        rem = Zoning(rem)
+    return zoning.difference(rem)
+
+def RestricZoning(zoning, restrict):
+    '''Returns a zoning system restricted to the zones specified (Origin OR
+    destination in the specified zones). This is usefull to keep all the
+    int-int, int-ext, ext-int trips from a matrix.'''
+
+    allzones = set(chain(*zoning.values))
+    if isinstance(restrict, list):
+        Os = restrict
+        Ds = restrict
+    else:
+        Os = set(list(zip(*restrict.values))[0])
+        Ds = set(list(zip(*restrict.values))[1])
+
+    return zoning[(zoning.isin(Os, level=0)) | (zoning.isin(Ds, level=1))]
+
+    ##Alternative approach
+    #II = Zoning([Os, Os]) #Int-Int
+    #IE = Zoning([Os, Ds]) #Int-Ext
+    #EI = Zoning([Ds, Os]) #Ext-Int
 
 class Matrix(pd.DataFrame):
     '''A Matrix in Transport Planning is a pandas DataFrame,
@@ -252,6 +281,27 @@ class Matrix(pd.DataFrame):
                     fill_value=0)
 
             return rezoned_weighted_mat
+
+    @property
+    def intrazonals(self):
+        '''Return the submatrix of intrazonals'''
+        indexer = [allequal(vals) for vals in self.index.values]
+        return self.loc[indexer]
+
+    @property
+    def intras(self):
+        return self.intrazonals
+
+    @property
+    def without_intrazonals(self):
+        '''Return the matrix without intrazonals'''
+        indexer = [allequal(vals) for vals in self.index.values]
+        indexer = [not x for x in indexer] #negate
+        return self.loc[indexer]
+
+    @property
+    def wointras(self):
+        return self.without_intrazonals
 
     def fill_intrazonals(self, using=0, inplace=True):
         '''Infill diagonal of the matrix. 'using' can be a value or an array
