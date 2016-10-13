@@ -105,10 +105,13 @@ class TLD(pd.DataFrame):
         TLDn = self.groupby(TLD.nband(n)).sum() #TLD by bands
         TLDn = TLD(TLDn) #Groupby does not preserve TLD subclass
         if upper_band:
-            TLDn = TLDn.upper_band()
+            TLDn = TLDn.upper_band(inplace=False)
         if set_zero:
             TLDn.set_zero()
-        return TLDn.sort_index()
+
+        TLDn.sort_index(inplace=True)
+
+        return TLDn
 
     @property
     def norm(self):

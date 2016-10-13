@@ -473,7 +473,7 @@ class Matrix(pd.DataFrame):
                     if pd.notnull(val):
                         OutputFile.write('\n {} {}: {:.{dec}f}'.format(O, D, val, dec=decimals))
 
-def TE_comparison_to_JPGs(mati, matf, oFileNamePattern='{}', title='',
+def TE_comparison_to_PNGs(mati, matf, oFileNamePattern='{}', title='',
                 xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=0,
                 prefixes='', suffixes=''):
     '''Produces scatterplots of trip ends in mati and matf.
@@ -483,6 +483,7 @@ def TE_comparison_to_JPGs(mati, matf, oFileNamePattern='{}', title='',
         suffixes         - to append to each column. Use as a marker.
     '''
     for df in zip_df_cols([mati.TE, matf.TE]):
+        flatten_cols(df)
         ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern=oFileNamePattern,
                 title=title, xaxis_eq_yaxis=xaxis_eq_yaxis,
                 homogeneous_axis=homogeneous_axis, min_axis=min_axis,
@@ -496,5 +497,7 @@ def TE_RegressionStats(mati, matf, prefixes='', suffixes=''):
         suffixes         - to append to each column. Use as a marker.
     '''
     return pd.concat([RegressionStats_ConsecutiveColPairs(
-                        df, prefixes=prefixes, suffixes=suffixes)
+                        flatten_cols(df, inplace=False),
+                        prefixes=prefixes,
+                        suffixes=suffixes)
                      for df in zip_df_cols([mati.TE, matf.TE])])
