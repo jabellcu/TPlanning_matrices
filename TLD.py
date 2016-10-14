@@ -166,7 +166,7 @@ class TLD(pd.DataFrame):
         of the TLD columns. TLD should contain totals, not proportions.'''
         return self.apply(lambda x: (x * self.index.get_level_values(level)).sum())
 
-    ##TODO: Add an option to dropna of fillna
+    ##TODO: Add an option to dropna or fillna
     @staticmethod
     def from_dist_col(mat, dist_col=-1, dist_band=1, normalized=False):
         '''Returns the Trip-Lenght Distribution of mat, 
@@ -201,7 +201,7 @@ class TLD(pd.DataFrame):
         if isinstance(dist_col, int):
             dist_col = dist.columns[dist_col]
 
-        df = mat.join(dist[[dist_col]]).fillna(0)
+        df = mat.join(dist.ix[:,[dist_col]]).fillna(0)
         tld = TLD.from_dist_col(df, dist_col,
                                 dist_band=dist_band,
                                 normalized=normalized)
