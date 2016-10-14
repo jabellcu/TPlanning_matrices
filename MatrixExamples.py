@@ -1,13 +1,13 @@
 
 # coding: utf-8
 
-# In[33]:
+# In[1]:
 
 # This Notebook demonstrates what can be done with Matrix module
 # also used for development playground...
 
 
-# In[34]:
+# In[2]:
 
 import pandas as pd
 import scipy.stats as stats
@@ -15,12 +15,12 @@ import pylab
 import matplotlib.pyplot as plt
 
 
-# In[35]:
+# In[3]:
 
 import os
 
 
-# In[36]:
+# In[4]:
 
 from AuxFunctions import *
 from Matrix import *
@@ -30,25 +30,25 @@ from Gravity import *
 
 # # Matrix Examples
 
-# In[37]:
+# In[5]:
 
 df = pd.DataFrame(data=[range(6) for row in range(3)], columns=['A1', 'A2', 'A3', 'B1', 'B2', 'B3'])
 df
 
 
-# In[38]:
+# In[6]:
 
 m = mat(7)
 m
 
 
-# In[39]:
+# In[7]:
 
 mat7 = Matrix(m)
 mat7
 
 
-# In[40]:
+# In[8]:
 
 exmat = pd.DataFrame({'O': [10,10,20,20],
                       'D': [10,20,10,20],
@@ -56,13 +56,13 @@ exmat = pd.DataFrame({'O': [10,10,20,20],
 exmat
 
 
-# In[41]:
+# In[9]:
 
 I3 = I(3)
 I3
 
 
-# In[42]:
+# In[10]:
 
 ex_matrixp = os.path.join('example_data', 'ex_matrix_1.csv')
 ex_matrix = pd.read_csv(ex_matrixp, index_col=[0,1])
@@ -70,7 +70,7 @@ ex_skimdistp = os.path.join('example_data', 'ex_skimdist_1.csv')
 ex_skimdist = pd.read_csv(ex_skimdistp, index_col=[0,1])
 
 
-# In[43]:
+# In[11]:
 
 zoning1 = Zoning(list(range(3)))
 zoning2 = Zoning(list(range(10)))
@@ -78,17 +78,17 @@ zoning3 = Zoning([5+i for i in range(5)])
 zoning4 = Zoning('A B C'.split())
 
 
-# In[44]:
+# In[12]:
 
 mat7.complete(zoning3)
 
 
-# In[45]:
+# In[13]:
 
 mat7.matrix.T3
 
 
-# In[46]:
+# In[14]:
 
 mat7.TDp.matrix.T3
 
@@ -99,7 +99,7 @@ mat7.TDp.matrix.T3
 # reload(Matrix)
 # from Matrix import *
 
-# In[47]:
+# In[15]:
 
 basicmapping = pd.DataFrame({
         'sectors': 'A A B B B C C'.split(),
@@ -116,129 +116,129 @@ mapping = pd.DataFrame({
     })
 
 
-# In[48]:
+# In[16]:
 
 mat77 = pd.concat([mat7, mat7*2], axis=1)
 mat77.columns = pd.MultiIndex.from_product(['A B'.split(), mat7.columns])
 mat77
 
 
-# In[49]:
+# In[17]:
 
 mat7.rezone(basicmapping, ['zones', 'sectors'])
 
 
-# In[50]:
+# In[18]:
 
 mat77.rezone(basicmapping, ['zones', 'sectors'], mapping_split_cols=['Val1', 'Val2'])
 
 
-# In[51]:
+# In[19]:
 
 rezoned = mat77.rezone(mapping, ['zones', 'sectors'], mapping_split_cols=['Val1', 'Val2'])
 rezoned
 
 
-# In[52]:
+# In[20]:
 
 rezoned.TOTALS
 
 
-# In[53]:
+# In[21]:
 
 mat7.TOTALS
 
 
-# In[54]:
+# In[22]:
 
 cost7 = mat7.apply(lambda x: abs(randomizeSeries(x, 0.2)))
 cost7
 
 
-# In[55]:
+# In[23]:
 
 cost77 = pd.concat([cost7, cost7*2], axis=1)
 cost77.columns = pd.MultiIndex.from_product(['A B'.split(), cost7.columns])
 cost77
 
 
-# In[56]:
+# In[24]:
 
 mat77_rezoned_weighted = mat77.rezone(mapping, ['zones', 'sectors'], ['Val1', 'Val2'], True, cost77)
 mat77_rezoned_weighted
 
 
-# In[57]:
+# In[25]:
 
 DEMMANDp = os.path.join('example_data', 'Demand_EMME.txt')
 DEMMAND = Matrix.read_EMME(DEMMANDp)
 DEMMAND
 
 
-# In[58]:
+# In[26]:
 
 DISTp = os.path.join('example_data', 'Dist_EMME.txt')
 DIST = Matrix.read_EMME(DISTp)
 DIST
 
 
-# In[59]:
+# In[27]:
 
 tTO = randomizeTE(mat7.TO)
 tTO
 
 
-# In[60]:
+# In[28]:
 
 tTD = randomizeTE(mat7.TD)
 tTD
 
 
-# In[61]:
+# In[29]:
 
 fmat7 = mat7.furness(tTO, tTD)
 fmat7
 
 
-# In[62]:
+# In[30]:
 
 max([max(x,y) for x,y in zip((fmat7.TO - tTO).abs().max(), (fmat7.TD - tTD).abs().max())])
 
 
 # # TLD examples
 
-# In[63]:
+# In[31]:
 
 ex_matrixf = os.path.join('example_data', 'ex_matrix_1.csv')
 ex_matrix = Matrix(pd.DataFrame.from_csv(ex_matrixf, index_col=[0,1]))
 ex_matrix
 
 
-# In[64]:
+# In[32]:
 
 ex_skimdistf = os.path.join('example_data', 'ex_skimdist_1.csv')
 ex_skimdist = Matrix(pd.DataFrame.from_csv(ex_skimdistf, index_col=[0,1]))
 ex_skimdist
 
 
-# In[65]:
+# In[33]:
 
 ## Fill intrazonals
 ex_skimdist = ex_skimdist.complete(ex_matrix.index)
 
 
-# In[66]:
+# In[34]:
 
 ex_TLD = TLD.from_mat(ex_matrix, ex_skimdist, 5)
 ex_TLD
 
 
-# In[67]:
+# In[35]:
 
 ex_TLD.sum()
 
 
-# In[68]:
+# In[36]:
 
 dst = mat7.copy()
 dst['T1'] = (dst.index.get_level_values(0)**2 - dst.index.get_level_values(1)**2)**2
@@ -248,56 +248,56 @@ dst.columns = 'D1 D2 D3'.split()
 dst
 
 
-# In[69]:
+# In[37]:
 
 TLD_single = TLD.from_mat_single(mat7,dst,dist_band=5)
 TLD_single
 
 
-# In[70]:
+# In[38]:
 
 TLD_multi = TLD.from_mat(mat7,dst,dist_band=5)
 TLD_multi
 
 
-# In[71]:
+# In[39]:
 
 mat7.sum()
 
 
-# In[72]:
+# In[40]:
 
 TLD_single.sum()
 
 
-# In[73]:
+# In[41]:
 
 TLD_multi.sum()
 
 
-# In[74]:
+# In[42]:
 
 TLD_multi.norm.sum()
 
 
-# In[75]:
+# In[43]:
 
 TLD_multi.band_agg(10).sum()
 
 
-# In[76]:
+# In[44]:
 
 OutputName = os.path.join('.', 'example_outputs', 'TLD.png')
 TLD_multi.to_PNG(OutputName)
 
 
-# In[77]:
+# In[45]:
 
 oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
 TLD_multi.cols_to_PNGs(oFileNamePattern)
 
 
-# In[78]:
+# In[46]:
 
 TLD1 = TLD_multi.copy()
 TLD2 = TLD_multi.copy() + 3
@@ -310,13 +310,13 @@ for TLD in TLDs:
     i+=1
 
 
-# In[79]:
+# In[47]:
 
 oFileNamePattern = os.path.join('example_outputs', 'TLD_{}.png')
 TLD.comparison_to_PNGs(TLDs, oFileNamePattern=oFileNamePattern)
 
 
-# In[80]:
+# In[48]:
 
 oFileNamePattern = os.path.join('example_outputs', 'ex_TLD_{}.png')
 ex_TLD.cols_to_PNGs(oFileNamePattern)
@@ -324,18 +324,18 @@ ex_TLD.cols_to_PNGs(oFileNamePattern)
 
 # # TE comparison
 
-# In[81]:
+# In[49]:
 
 fmat7.TE
 
 
-# In[82]:
+# In[50]:
 
 oFileNamePattern = os.path.join('example_outputs', '{}')
 TE_comparison_to_PNGs(mat7,fmat7, oFileNamePattern=oFileNamePattern, prefixes='mat_ fmat7_'.split())
 
 
-# In[85]:
+# In[51]:
 
 TE_RegressionStats(mat7,fmat7, prefixes='mat_ fmat7_'.split())
 

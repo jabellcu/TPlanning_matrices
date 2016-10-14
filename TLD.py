@@ -201,13 +201,12 @@ class TLD(pd.DataFrame):
         if isinstance(dist_col, int):
             dist_col = dist.columns[dist_col]
 
-        df = mat.join(dist.ix[:,[dist_col]]).fillna(0)
-        tld = TLD.from_dist_col(df, dist_col, dist_band)
+        df = mat.join(dist[[dist_col]]).fillna(0)
+        tld = TLD.from_dist_col(df, dist_col,
+                                dist_band=dist_band,
+                                normalized=normalized)
 
         tld = TLD(tld)
-
-        if normalized:
-            tld = tld.norm
 
         return tld
 
@@ -220,7 +219,9 @@ class TLD(pd.DataFrame):
         used.'''
 
         if len(mat.columns) != len(dist.columns):
-            return TLD.from_mat_single(mat, dist, dist_band=dist_band, normalized=normalized)
+            return TLD.from_mat_single(mat, dist,
+                                        dist_band=dist_band,
+                                        normalized=normalized)
 
         dfs = zip_df_cols([mat,dist])
         TLDs = [TLD.from_dist_col(df, dist_col=1,
@@ -228,14 +229,8 @@ class TLD(pd.DataFrame):
                                     normalized=normalized)
                 for df in dfs]
 
-        tld = pd.DataFrame()
-        for xtld in TLDs:
-            tld = pd.concat([tld, xtld], axis=1)
-
+        tld = pd.concat(TLDs, axis=1)
         tld = TLD(tld)
-
-        if normalized:
-            tld = tld.norm 
 
         return tld
 
