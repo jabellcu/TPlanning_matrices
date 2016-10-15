@@ -53,6 +53,16 @@ class TLD(pd.DataFrame):
             df.at[0,:]=0
             return df
 
+    def remove_negative_index(self, inplace=True):
+        '''Removes negative values form index.
+        MultiIndex not implemented yet'''
+        ##TODO: implement for MultiIndex
+        idx_lbls_LT0 = self.index[self.index.values < 0]
+        if inplace:
+            self.drop(idx_lbls_LT0, inplace=inplace)
+        else:
+            return self.drop(idx_lbls_LT0, inplace=inplace)
+
     def upper_band(self, current_bands=0, inplace=True):
         '''Returns TLD using the upper band of the distance ranges in the
         index.
@@ -84,9 +94,11 @@ class TLD(pd.DataFrame):
 
         if inplace:
             self.index = newidx
+            self.remove_negative_index(inplace=inplace)
         else:
             tld = self.copy()
             tld.index = newidx
+            tld = tld.remove_negative_index(inplace=inplace)
             return tld
 
     def band_agg(self, n, current_bands=0, upper_band=True, set_zero=False):
