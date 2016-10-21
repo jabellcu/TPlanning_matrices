@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 import re
 import os
+from itertools import chain
 
 from AuxFunctions import *
 
@@ -37,6 +38,34 @@ def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     
     return idx
 
+def RemoveFromZoning(zoning, rem):
+    '''Returns zoning without the zones specified. 'rem' can be a list of zones
+    or a zoning system.'''
+
+    if isinstance(rem, list):
+        rem = Zoning(rem)
+    return zoning.difference(rem)
+
+def RestricZoning(zoning, restrict):
+    '''Returns a zoning system restricted to the zones specified (Origin OR
+    destination in the specified zones). This is usefull to keep all the
+    int-int, int-ext, ext-int trips from a matrix.'''
+
+    allzones = set(chain(*zoning.values))
+    if isinstance(restrict, list):
+        Os = restrict
+        Ds = restrict
+    else:
+        Os = set(list(zip(*restrict.values))[0])
+        Ds = set(list(zip(*restrict.values))[1])
+
+    return zoning[(zoning.isin(Os, level=0)) | (zoning.isin(Ds, level=1))]
+
+    ##Alternative approach
+    #II = Zoning([Os, Os]) #Int-Int
+    #IE = Zoning([Os, Ds]) #Int-Ext
+    #EI = Zoning([Ds, Os]) #Ext-Int
+
 class Matrix(pd.DataFrame):
     '''A Matrix in Transport Planning is a pandas DataFrame,
     with Origins and Destinations as MultiIndex levels: [O, D]'''
@@ -59,12 +88,38 @@ class Matrix(pd.DataFrame):
     @property
     def TO(self):
         '''Returns trip-ends for origins.'''
-        return self.groupby(level=0).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+            col_lvl_names = self.columns.names
+            mat = self.copy().flat_cols
+        else:
+            mat = self.copy()
+        
+        te = mat.groupby(level=0).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+                split_cols(te)
+                te.columns.names = col_lvl_names
+                
+        return te
 
     @property
     def TD(self):
         '''Returns trip-ends for destinations.'''
-        return self.groupby(level=1).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+            col_lvl_names = self.columns.names
+            mat = self.copy().flat_cols
+        else:
+            mat = self.copy()
+        
+        te = mat.groupby(level=1).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+                split_cols(te)
+                te.columns.names = col_lvl_names
+                
+        return te
 
     @property
     def TE(self):
@@ -78,7 +133,13 @@ class Matrix(pd.DataFrame):
         '''Returns Trip Ends: both trip origins and trip destinations
         in a single DataFrame. Allows customization of index and column names.'''
         TE = pd.concat([self.TO, self.TD], axis=1)
-        TE.columns = pd.MultiIndex.from_product([names, self.columns])
+        
+        if isinstance(self.columns, pd.MultiIndex):
+            tuples = [tuple([te,*v]) for te in names for v in self.columns.values]
+            TE.columns = pd.MultiIndex.from_tuples(tuples)
+        else:
+            TE.columns = pd.MultiIndex.from_product([names, self.columns])
+        
         return TE
 
     @property
@@ -169,6 +230,7 @@ class Matrix(pd.DataFrame):
             '''
         
         if isinstance(self.columns, pd.MultiIndex):
+            col_lvl_names = self.columns.names
             mat = self.copy().flat_cols
         else:
             mat = self.copy()
@@ -219,6 +281,7 @@ class Matrix(pd.DataFrame):
             
             if isinstance(self.columns, pd.MultiIndex):
                 rezoned = rezoned.unflat
+                rezoned.columns.names = col_lvl_names
             
             if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
                 print("WARNING: rezoned matrix does not preserve the matrix totals.")
@@ -252,6 +315,27 @@ class Matrix(pd.DataFrame):
                     fill_value=0)
 
             return rezoned_weighted_mat
+
+    @property
+    def intrazonals(self):
+        '''Return the submatrix of intrazonals'''
+        indexer = [allequal(vals) for vals in self.index.values]
+        return self.loc[indexer]
+
+    @property
+    def intras(self):
+        return self.intrazonals
+
+    @property
+    def without_intrazonals(self):
+        '''Return the matrix without intrazonals'''
+        indexer = [allequal(vals) for vals in self.index.values]
+        indexer = [not x for x in indexer] #negate
+        return self.loc[indexer]
+
+    @property
+    def wointras(self):
+        return self.without_intrazonals
 
     def fill_intrazonals(self, using=0, inplace=True):
         '''Infill diagonal of the matrix. 'using' can be a value or an array
@@ -473,7 +557,7 @@ class Matrix(pd.DataFrame):
                     if pd.notnull(val):
                         OutputFile.write('\n {} {}: {:.{dec}f}'.format(O, D, val, dec=decimals))
 
-def TE_comparison_to_JPGs(mati, matf, oFileNamePattern='{}', title='',
+def TE_comparison_to_PNGs(mati, matf, oFileNamePattern='{}', title='',
                 xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=0,
                 prefixes='', suffixes=''):
     '''Produces scatterplots of trip ends in mati and matf.
@@ -483,6 +567,7 @@ def TE_comparison_to_JPGs(mati, matf, oFileNamePattern='{}', title='',
         suffixes         - to append to each column. Use as a marker.
     '''
     for df in zip_df_cols([mati.TE, matf.TE]):
+        flatten_cols(df)
         ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern=oFileNamePattern,
                 title=title, xaxis_eq_yaxis=xaxis_eq_yaxis,
                 homogeneous_axis=homogeneous_axis, min_axis=min_axis,
@@ -496,5 +581,7 @@ def TE_RegressionStats(mati, matf, prefixes='', suffixes=''):
         suffixes         - to append to each column. Use as a marker.
     '''
     return pd.concat([RegressionStats_ConsecutiveColPairs(
-                        df, prefixes=prefixes, suffixes=suffixes)
+                        flatten_cols(df, inplace=False),
+                        prefixes=prefixes,
+                        suffixes=suffixes)
                      for df in zip_df_cols([mati.TE, matf.TE])])
