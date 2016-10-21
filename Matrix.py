@@ -88,12 +88,38 @@ class Matrix(pd.DataFrame):
     @property
     def TO(self):
         '''Returns trip-ends for origins.'''
-        return self.groupby(level=0).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+            col_lvl_names = self.columns.names
+            mat = self.copy().flat_cols
+        else:
+            mat = self.copy()
+        
+        te = mat.groupby(level=0).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+                split_cols(te)
+                te.columns.names = col_lvl_names
+                
+        return te
 
     @property
     def TD(self):
         '''Returns trip-ends for destinations.'''
-        return self.groupby(level=1).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+            col_lvl_names = self.columns.names
+            mat = self.copy().flat_cols
+        else:
+            mat = self.copy()
+        
+        te = mat.groupby(level=1).sum()
+        
+        if isinstance(self.columns, pd.MultiIndex):
+                split_cols(te)
+                te.columns.names = col_lvl_names
+                
+        return te
 
     @property
     def TE(self):
@@ -107,7 +133,13 @@ class Matrix(pd.DataFrame):
         '''Returns Trip Ends: both trip origins and trip destinations
         in a single DataFrame. Allows customization of index and column names.'''
         TE = pd.concat([self.TO, self.TD], axis=1)
-        TE.columns = pd.MultiIndex.from_product([names, self.columns])
+        
+        if isinstance(self.columns, pd.MultiIndex):
+            tuples = [tuple([te,*v]) for te in names for v in self.columns.values]
+            TE.columns = pd.MultiIndex.from_tuples(tuples)
+        else:
+            TE.columns = pd.MultiIndex.from_product([names, self.columns])
+        
         return TE
 
     @property
