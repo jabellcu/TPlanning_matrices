@@ -432,26 +432,26 @@ class Matrix(pd.DataFrame):
         Accepts matrices, trip origins, trip destinations and constants.
         Assumes one single value per row in the EMME files.
         '''
-
+    
         EMMErecord_cols = {
             'md': ['zone', '_TD'],
             'mo': ['zone', '_TO'],
             'mf': ['O', 'D', ''],
             'ms': 'Num Name Value Desc'.split()
             } #TODO: remove difference by TO /TD / T ??
-
+    
         ## RegEx to read EMME format:
-        mat_re = re.compile(r'a matrix\s*=\s*(mo|md|mf|ms)(\d+)\s+(\w+?)\s+(-?\d+)\s+(.+?)\n(.*?)\n(?=a matrix|d matrix|\Z|\s*\n)',
+        mat_re = re.compile(r'a\s+(?:matrix\s*=\s*)?(mo|md|mf|ms)(\d+)\s+(\w+?)\s+(-?[.0-9]+)\s+(.+?)\n(.*?)\n(?=a\s+(?:matrix)|d (?:matrix)|\Z|\s*\n)',
                            re.DOTALL | re.MULTILINE)
         # re groups:
         # mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data
-
+    
         EMMErecord_re = {
             'md': re.compile(r'\s*all\s+(\d+)\s*:\s*(-?\.?\d+\.?\d*)\n?'),
             'mo': re.compile(r'\s*(\d+)\s+all\s*:\s*(-?\.?\d+\.?\d*)\n?'),
             'mf': re.compile(r'\s*(\d+)\s+(\d+)\s*:\s*(-?\.?\d+\.?\d*)\n?')
-            } #TODO: implement ms
-
+            }
+    
         ## Read Data
         data = {}
         filen = os.path.basename(file)
@@ -461,18 +461,10 @@ class Matrix(pd.DataFrame):
             #each source file might contain several matrices
             mat_blocks = mat_re.findall(fcontent)
             
-            if mat_blocks:
-                #normal md/mo/mf matrices
-                for matb in mat_blocks:
-                    mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data = matb
-                    mat_rows = EMMErecord_re[mat_type].findall(mat_data)
-                    data[mat_name] = dict(zip(
-                       'mat_type, mat_num, mat_default, mat_desc, mat_rows'.split(', '),
-                       [mat_type, mat_num, mat_default, mat_desc, mat_rows]))
-                    #TODO: Use named tuples
-            else:
+            ##TODO: Clean the different ways of processing ms or md/mo/mf matrices
+            if 'ms' in fcontent:
                 #single value ms matrices
-                mat_re = re.compile(r'a\s+ms(\d+)\s+(\w+?)\s+([-.0-9]+)\s+(.*)\n')
+                mat_re = re.compile(r'a\s+(?:matrix\s*=\s*)?ms(\d+)\s+(\w+?)\s+([-.0-9]+)\s+(.*)\n')
                 # re groups:
                 # mat_num, mat_name, mat_val, mat_desc
                 mat_rows = mat_re.findall(fcontent)
@@ -482,37 +474,48 @@ class Matrix(pd.DataFrame):
                     data[mat_name] = dict(zip(
                        'mat_type, mat_num, mat_name, mat_val, mat_desc'.split(', '),
                        [mat_type, mat_num, mat_name, mat_val, mat_desc]))
-
+            else:
+                #normal md/mo/mf matrices
+                for matb in mat_blocks:
+                    mat_type, mat_num, mat_name, mat_default, mat_desc, mat_data = matb
+                    mat_rows = EMMErecord_re[mat_type].findall(mat_data)
+                    data[mat_name] = dict(zip(
+                       'mat_type, mat_num, mat_default, mat_desc, mat_rows'.split(', '),
+                       [mat_type, mat_num, mat_default, mat_desc, mat_rows]))
+                    #TODO: Use named tuples
+    
         ## Convert to DataFrame
         data_df = {}
+        ##TODO: avoid using a dict to preserve the original order.
+        
         for matn in data:
             mat_data = data[matn]
-
+    
             #convert rows into df, setting column names and index
             df_cols = EMMErecord_cols[mat_data['mat_type']]
             df_idx_cols = df_cols[:-1]
             df_data_col = df_cols[-1]
-
+    
             #this avoids repeated matrix names:
             mat_id = '{}{}'.format(matn, df_data_col)
             df_cols = df_idx_cols + [mat_id]
-
-            if mat_blocks:
+    
+            if 'ms' in fcontent:
+                mat = pd.DataFrame.from_dict(mat_data, orient='index')
+            else:
                 mat = Matrix.from_records(mat_data['mat_rows'],
                                                columns=df_cols,
                                                index=df_idx_cols)
-            else:
-                mat = pd.DataFrame.from_dict(mat_data, orient='index')
-
+    
             data_df[mat_id] = mat
-
+    
         matrix = pd.concat(data_df.values(), axis=1)
-
-        if mat_blocks:
-            matrix = matrix.apply(pd.to_numeric)
-        else:
+    
+        if 'ms' in fcontent:
             matrix = matrix.T.set_index('mat_num')['mat_name mat_val mat_desc'.split()]
-
+        else:
+            matrix = matrix.apply(pd.to_numeric)
+    
         #numeric is needed for Matrix methods to work as expected
         return matrix
 
