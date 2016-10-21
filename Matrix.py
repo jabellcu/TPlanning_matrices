@@ -198,7 +198,7 @@ class Matrix(pd.DataFrame):
             '''
         
         if isinstance(self.columns, pd.MultiIndex):
-            col_lvl_names = mat.columns.names
+            col_lvl_names = self.columns.names
             mat = self.copy().flat_cols
         else:
             mat = self.copy()
