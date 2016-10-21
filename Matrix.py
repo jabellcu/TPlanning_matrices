@@ -198,6 +198,7 @@ class Matrix(pd.DataFrame):
             '''
         
         if isinstance(self.columns, pd.MultiIndex):
+            col_lvl_names = mat.columns.names
             mat = self.copy().flat_cols
         else:
             mat = self.copy()
@@ -248,6 +249,7 @@ class Matrix(pd.DataFrame):
             
             if isinstance(self.columns, pd.MultiIndex):
                 rezoned = rezoned.unflat
+                rezoned.columns.names = col_lvl_names
             
             if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
                 print("WARNING: rezoned matrix does not preserve the matrix totals.")
