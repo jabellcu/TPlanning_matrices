@@ -370,6 +370,29 @@ class Matrix(pd.DataFrame):
 
         return fmat
 
+    def sectorized(self, sectoring: pd.DataFrame, zcol: str, scol: str):
+        '''Returns a matrix with the same dimensions.  All cells belonging to a
+        sector OD pair will have the sector OD pair total number of trips.
+        Useful to calculate the proportions of each cell over the aggregated of
+        it's corresponding sector
+          zcol- column name containing the zones
+          scol- column name containing the sectors'''
+        
+        cols = self.columns
+        idxcols = self.index.names
+        Ocol, Dcol = idxcols
+
+        suffixes=['_O','_D'] #irrelevant, index is overwritten below
+        
+        sectorized = self.reset_index()
+        sectorized = sectorized.merge(CBLTM_MPDsec, how='left', left_on=Ocol, right_on=zcol)
+        sectorized = sectorized.merge(CBLTM_MPDsec, how='left', left_on=Dcol, right_on=zcol, suffixes=suffixes)
+        sectorized = sectorized.groupby([scol+suf for suf in suffixes])[cols].transform('sum')
+        
+        sectorized.index = self.index
+        
+        return sectorized
+
     def ApplyGravityModel(self, TO, TD, f, furness=True, *args, **kwargs):
         '''Returns a matrix Tij = Oi*Dj*f(cij)
         self     - cost matrix
