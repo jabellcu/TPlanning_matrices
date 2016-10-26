@@ -385,8 +385,8 @@ class Matrix(pd.DataFrame):
         suffixes=['_O','_D'] #irrelevant, index is overwritten below
         
         sectorized = self.reset_index()
-        sectorized = sectorized.merge(CBLTM_MPDsec, how='left', left_on=Ocol, right_on=zcol)
-        sectorized = sectorized.merge(CBLTM_MPDsec, how='left', left_on=Dcol, right_on=zcol, suffixes=suffixes)
+        sectorized = sectorized.merge(sectoring, how='left', left_on=Ocol, right_on=zcol)
+        sectorized = sectorized.merge(sectoring, how='left', left_on=Dcol, right_on=zcol, suffixes=suffixes)
         sectorized = sectorized.groupby([scol+suf for suf in suffixes])[cols].transform('sum')
         
         sectorized.index = self.index
