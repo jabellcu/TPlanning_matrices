@@ -371,10 +371,10 @@ class Matrix(pd.DataFrame):
         return fmat
 
     def sectorized(self, sectoring: pd.DataFrame, zcol: str, scol: str):
-        '''Returns a matrix with the same dimensions.  All cells belonging to a
-        sector OD pair will have the sector OD pair total number of trips.
-        Useful to calculate the proportions of each cell over the aggregated of
-        it's corresponding sector
+        '''Returns a matrix with the same dimensions, aggregated by sectors.
+        All cells belonging to a sector OD pair will have the sector OD pair
+        total number of trips.  Useful to calculate the proportions of each
+        cell over the aggregated of it's corresponding sector
           zcol- column name containing the zones
           scol- column name containing the sectors'''
         
@@ -392,6 +392,27 @@ class Matrix(pd.DataFrame):
         sectorized.index = self.index
         
         return sectorized
+
+    def desectorized(self, sectoring: pd.DataFrame, zcol: str, scol: str, suffixes=['_O','_D']):
+        '''Returns a matrix zone-based matrix from a sector matrix, with zone
+        dimensions.  All cells belonging to a sector OD pair will have the
+        sector OD pair total number of trips.  Useful for calculations with
+        other zone-based matrices.
+          zcol- column name containing the zones
+          scol- column name containing the sectors'''
+
+        cols = self.columns
+        idxcols = self.index.names
+        Ocol, Dcol = idxcols
+
+        desectorized = self.reset_index()
+        desectorized = desectorized.merge(sectoring, how='left', left_on=Ocol, right_on=scol)
+        desectorized = desectorized.merge(sectoring, how='left', left_on=Dcol, right_on=scol, suffixes=suffixes)
+
+        desectorized = desectorized.set_index([zcol+suf for suf in suffixes])
+        desectorized = desectorized[cols]
+
+        return desectorized
 
     def ApplyGravityModel(self, TO, TD, f, furness=True, *args, **kwargs):
         '''Returns a matrix Tij = Oi*Dj*f(cij)
