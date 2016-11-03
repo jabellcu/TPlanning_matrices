@@ -149,9 +149,9 @@ def flatten_cols(df, sep='_', strip=True, inplace=True):
         raise ValueError("Columns are already flat")
     
     if strip:
-        cols = [sep.join(col_vals).strip() for col_vals in df.columns.values]
+        cols = [sep.join([str(c) for c in col_vals]).strip() for col_vals in df.columns.values]
     else:
-        cols = [sep.join(col_vals) for col_vals in df.columns.values]
+        cols = [sep.join([str(c) for c in col_vals]) for col_vals in df.columns.values]
     
     if inplace:
         df.columns = cols
@@ -247,7 +247,9 @@ def ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern='{}', title='',
     
     if duplicates_in_list(df.columns):
         raise ValueError("Duplicate names in DataFrame's columns.")
-        
+    
+    df = df.dropna()
+
     cols = df.columns
     #TODO: review xaxis_eq_yaxis and homogeneous_axis
     minv = df.min().min()
@@ -333,6 +335,8 @@ def RegressionStats_ConsecutiveColPairs(df, prefixes='', suffixes='', **kwargs):
     
     if duplicates_in_list(df.columns):
         raise ValueError("Duplicate names in DataFrame's columns.")
+
+    df = df.dropna()
     
     regression_df = pd.DataFrame(columns=['slope', 'intercept', 'R2'])
     cols = df.columns

@@ -604,9 +604,10 @@ class Matrix(pd.DataFrame):
                     if pd.notnull(val):
                         OutputFile.write('\n {} {}: {:.{dec}f}'.format(O, D, val, dec=decimals))
 
-def TE_comparison_to_PNGs(mati, matf, oFileNamePattern='{}', title='',
-                xaxis_eq_yaxis=True, homogeneous_axis=True, min_axis=0,
-                prefixes='', suffixes=''):
+def TE_comparison_to_PNGs(mati, matf, constrain_zones=None,
+        oFileNamePattern='{}', title='', xaxis_eq_yaxis=True,
+        homogeneous_axis=True, min_axis=0, prefixes='', suffixes='',
+        output_df=False):
     '''Produces scatterplots of trip ends in mati and matf.
     mati and matf columns will be compared pairwise, so must be ordered.
     Wrapper of ScatterPlot_ConsecutiveColPairs (with flavor).
@@ -614,13 +615,23 @@ def TE_comparison_to_PNGs(mati, matf, oFileNamePattern='{}', title='',
         suffixes         - to append to each column. Use as a marker.
     '''
     for df in zip_df_cols([mati.TE, matf.TE]):
+        
         flatten_cols(df)
+        
+        try:
+            ##TODO: fix this condition. Try should not be needed.
+            if list(constrain_zones):
+                df = df.loc[constrain_zones, :]
+        except:
+            pass
+
         ScatterPlot_ConsecutiveColPairs(df, oFileNamePattern=oFileNamePattern,
                 title=title, xaxis_eq_yaxis=xaxis_eq_yaxis,
                 homogeneous_axis=homogeneous_axis, min_axis=min_axis,
-                prefixes=prefixes, suffixes=suffixes)
+                prefixes=prefixes, suffixes=suffixes, output_df=output_df)
 
-def TE_RegressionStats(mati, matf, prefixes='', suffixes=''):
+def TE_RegressionStats(mati, matf, include_zones=None,
+                prefixes='', suffixes=''):
     '''Returns a dataframe with the regression statistics of mati and matf trip
     ends. mati and matf columns will be compared pairwise, so must be ordered.
     Wrapper of RegressionStats_ConsecutiveColPairs (with flavor).
