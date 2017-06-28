@@ -563,6 +563,17 @@ class Matrix(pd.DataFrame):
         #numeric is needed for Matrix methods to work as expected
         return matrix
 
+    @staticmethod
+    def read_FormatO(file, names=['O','D','T']):
+        '''Reads a "FormatO.mtx" file as exported from VISUM.'''
+
+        buf = read_clean(file)
+        df = pd.read_csv(buf, delim_whitespace=True, header=None, 
+                     names=names, index_col=[0,1])
+        mat = Matrix(df)
+
+        return mat
+
     def to_EMME(self, OutputName,
                 file_header='', mat_number_start=100, mat_comment='', 
                 default_val=0, decimals=4):

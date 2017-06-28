@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import re
 import scipy.stats as stats
 import pylab
+import io
 
 def ListElementsInStr(s, lst):
     '''returns the elements of lst found in s'''
@@ -394,3 +395,12 @@ def Compare_ConsecutiveColPairs(df, oFileNamePattern='{}',
 def allequal(lst):
     '''Returns True if all elements of lst are identical'''
     return not lst or lst.count(lst[0]) == len(lst)
+
+def read_clean(fp):
+    '''Reads a *.mtx file and returns a buffer with only those lines
+    starting with a space'''
+    with open(fp, 'r') as iF:
+        data = iF.readlines()
+        data = [row for row in data if row[0]==' ']
+        buf = io.StringIO(''.join(data))
+    return buf
