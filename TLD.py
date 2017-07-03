@@ -228,7 +228,7 @@ class TLD(pd.DataFrame):
         TLD for each mat column will be based on the corresponding
         column from dist (in order). mat and dist must have the same
         number of columns, or just the first distance column will be
-        used.'''
+        used, but make sure names don't overlap!.'''
 
         if len(mat.columns) != len(dist.columns):
             return TLD.from_mat_single(mat, dist,
