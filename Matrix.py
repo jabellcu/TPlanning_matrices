@@ -207,7 +207,7 @@ class Matrix(pd.DataFrame):
 
     def rezone(self, mapping, mapping_cols=['old', 'new'],
                mapping_split_cols=None, calculate_proportions=True,
-               weights=None, min_val=0.00000001, tol=0.001):
+               weights=None, min_val=0.00000001, tol=0.001, strict=False):
         '''Changes the zoning system based on mapping.
         A mapping is a correspondence between old zones and new zones.
 
@@ -284,7 +284,10 @@ class Matrix(pd.DataFrame):
                 rezoned.columns.names = col_lvl_names
             
             if not np.allclose(self.TOTALS, rezoned.TOTALS, rtol=tol, atol=tol):
-                print("WARNING: rezoned matrix does not preserve the matrix totals.")
+                if strict:
+                    raise Warning("Rezoned matrix does not preserve the matrix totals.")
+                else:
+                    print("WARNING: rezoned matrix does not preserve the matrix totals.")
 
             return rezoned
 
