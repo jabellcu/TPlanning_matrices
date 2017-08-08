@@ -9,7 +9,11 @@ import re
 import os
 from itertools import chain
 
-from AuxFunctions import *
+try:
+    from TPlanning_matrices.AuxFunctions import *
+except:
+    # For in-folder examples
+    from AuxFunctions import *
 
 def Zoning(zones: list, names=['O', 'D']) -> pd.MultiIndex:
     '''Returns a MultiIndex object with zones for origins and destinations.

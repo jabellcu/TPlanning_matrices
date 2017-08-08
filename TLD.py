@@ -17,8 +17,13 @@ import glob
 
 # In[3]:
 
-from Matrix import Matrix
-from AuxFunctions import *
+try:
+    from TPlanning_matrices.Matrix import Matrix
+    from TPlanning_matrices.AuxFunctions import *
+except:
+    # For in-folder examples    
+    from Matrix import Matrix
+    from AuxFunctions import *
 
 
 # In[4]:
