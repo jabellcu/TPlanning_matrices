@@ -143,6 +143,8 @@ class Matrix(pd.DataFrame):
             TE.columns = pd.MultiIndex.from_tuples(tuples)
         else:
             TE.columns = pd.MultiIndex.from_product([names, self.columns])
+
+        TE.index.name = index_name
         
         return TE
 
